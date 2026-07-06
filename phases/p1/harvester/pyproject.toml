@@ -1,0 +1,17 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = [
+    "tests",
+]
+pythonpath = ["app", "tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = [
+    "app",
+]
+
+[tool.coverage.report]
+fail_under = 80

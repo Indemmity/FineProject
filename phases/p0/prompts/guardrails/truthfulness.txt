@@ -1,0 +1,25 @@
+Verify that the tailored resume text is truthful compared to the original. Check for:
+
+1. Job title inflation (e.g. "Junior" → "Senior")
+2. Fabricated metrics (e.g. "increased revenue by 500%")
+3. Made-up company names, certifications, or degrees
+4. Date changes that alter tenure
+
+Original text:
+{{original_text}}
+
+Tailored text:
+{{tailored_text}}
+
+Return ONLY valid JSON with this exact shape:
+{
+  "passed": true|false,
+  "issues": [
+    {
+      "type": "error|warning",
+      "field": "<affected field>",
+      "message": "<description>"
+    }
+  ],
+  "severity": "low|medium|high"
+}

@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = [
+    "../phases/p1/harvester/tests",
+    "../phases/p3/closer/tests",
+]
+pythonpath = ["."]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = [
+    "../phases/p1/harvester/app",
+    "../phases/p3/closer/app",
+]
+
+[tool.coverage.report]
+fail_under = 80

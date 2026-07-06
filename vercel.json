@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npx turbo build --filter=web",
+  "outputDirectory": "phases/p0/apps/web/.next",
+  "installCommand": "npm ci",
+  "ignoreCommand": "npx turbo-ignore --fallback=HEAD^1"
+}

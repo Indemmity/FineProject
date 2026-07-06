@@ -1,0 +1,17 @@
+Given the job description and resume below, identify skill gaps and suggest improvements.
+
+Job Description:
+{{jd_excerpt}}
+
+Resume:
+{{resume_text}}
+
+Return ONLY valid JSON with this exact shape:
+[
+  {
+    "skill": "<name>",
+    "importance": "high|medium|low",
+    "category": "technical|domain|soft_skill|education",
+    "suggestedAction": "<action>"
+  }
+]

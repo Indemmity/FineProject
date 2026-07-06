@@ -1,0 +1,26 @@
+{
+  "name": "@jobplatform/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint ok'",
+    "clean": "rm -rf node_modules"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "groq-sdk": "^0.14.0",
+    "jspdf": "^4.2.1",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "5.4.296",
+    "postgres": "^3.4.9",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/pdf-parse": "^1.1.5",
+    "typescript": "^5.7.0"
+  }
+}

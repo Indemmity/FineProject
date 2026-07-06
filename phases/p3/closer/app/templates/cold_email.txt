@@ -1,0 +1,11 @@
+Hi {{ recipient_name }},
+
+{{ intro_paragraph }}
+
+{{ body_paragraph }}
+
+{{ closing_paragraph }}
+
+Best regards,
+{{ sender_name }}
+{{ sender_title }}

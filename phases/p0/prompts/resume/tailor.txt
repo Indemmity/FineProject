@@ -1,0 +1,18 @@
+Tailor the following resume bullet point to better match the target job description.
+Preserve all factual information — never fabricate metrics or experiences.
+
+Original bullet point:
+{{original_bullet}}
+
+Target job description excerpt:
+{{jd_excerpt}}
+
+Target skills to highlight:
+{{target_skills}}
+
+Return ONLY valid JSON with this exact shape:
+{
+  "tailored": "<rewritten bullet point>",
+  "reason": "<brief explanation of changes>",
+  "changed": true|false
+}

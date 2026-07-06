@@ -1,0 +1,95 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: jobplatform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Phase P0: Foundation ──────────────────────────────────────
+  web:
+    build:
+      context: ./phases/p0
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/jobplatform
+      REDIS_URL: redis://redis:6379
+      HARVESTER_URL: http://harvester:8001
+      CLOSER_URL: http://closer:8002
+      NEXTAUTH_SECRET: dev-secret-change-in-production
+      NEXTAUTH_URL: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Phase P1: Job Harvester ───────────────────────────────────
+  harvester:
+    build:
+      context: ./phases/p1/harvester
+      dockerfile: Dockerfile
+    ports:
+      - '8001:8001'
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/jobplatform
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Phase P3: The Closer ──────────────────────────────────────
+  closer:
+    build:
+      context: ./phases/p3/closer
+      dockerfile: Dockerfile
+    ports:
+      - '8002:8002'
+    environment:
+      DRY_RUN: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Phase P4: Orchestrator ────────────────────────────────────
+  orchestrator:
+    build:
+      context: ./phases/p4/orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - '8100:8100'
+    environment:
+      PORT: '8100'
+      HARVESTER_URL: http://harvester:8001
+      CLOSER_URL: http://closer:8002
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:

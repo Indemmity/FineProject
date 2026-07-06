@@ -1,0 +1,15 @@
+Analyse the following job description and resume, then produce a structured assessment.
+
+Job Description:
+{{jd_excerpt}}
+
+Resume:
+{{resume_text}}
+
+Return ONLY valid JSON with this exact shape:
+{
+  "score": <number 0-100>,
+  "skillBreakdown": [{ "skill": "<name>", "level": "beginner|intermediate|advanced|expert", "relevance": <number 0-100> }],
+  "strengths": ["<strength>"],
+  "weaknesses": ["<weakness>"]
+}
