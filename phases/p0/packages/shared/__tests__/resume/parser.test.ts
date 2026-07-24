@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const pdfParseMocks = vi.hoisted(() => {
   const getText = vi.fn();
   const destroy = vi.fn().mockResolvedValue(undefined);
+  const setWorker = vi.fn();
   const PDFParse = vi.fn().mockImplementation(function (this: unknown, options: unknown) {
     Object.assign(this as Record<string, unknown>, {
       options,
@@ -10,6 +11,7 @@ const pdfParseMocks = vi.hoisted(() => {
       destroy,
     });
   });
+  PDFParse.setWorker = setWorker;
 
   return {
     PDFParse,

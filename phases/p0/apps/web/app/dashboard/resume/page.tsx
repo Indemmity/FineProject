@@ -14,10 +14,13 @@ import { DiffViewer } from "@/components/resume/DiffViewer";
 import { TailorButton } from "@/components/resume/TailorButton";
 import { DownloadButton } from "@/components/resume/DownloadButton";
 import { GuardrailBadge } from "@/components/resume/GuardrailBadge";
-import { Loader2, ArrowRight, RefreshCw, Upload, X } from "lucide-react";
+import { ResumeDataEditor } from "@/components/resume/ResumeDataEditor";
+import { VisualResumeBuilder } from "@/components/resume/VisualResumeBuilder";
+import { Loader2, ArrowRight, RefreshCw, Upload, X, Layout } from "lucide-react";
 import type { GapItem as SharedGapItem, MatchResult } from "@jobplatform/shared";
 import { loadSelectedJobs } from "@/lib/selected-jobs";
 import { syncResumeTracker } from "@/lib/resume-tracker";
+import type { ResumeData } from "@jobplatform/shared/lib/resume/extractor";
 
 interface UploadResult {
   id: string;
@@ -25,6 +28,7 @@ interface UploadResult {
   format: string;
   wordCount: number;
   text: string;
+  extractedData?: ResumeData;
 }
 
 interface AnalysisResult {
@@ -71,6 +75,9 @@ export default function ResumeStudioPage() {
   const [trackerMessage, setTrackerMessage] = useState<string | null>(null);
   const [selectedJobs, setSelectedJobs] = useState<Job[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null);
+  const [isDataEditorOpen, setIsDataEditorOpen] = useState(false);
+  const [isVisualBuilderOpen, setIsVisualBuilderOpen] = useState(false);
   const uploaderRef = useRef<FileUploaderHandle>(null);
   const jdTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,7 +86,13 @@ export default function ResumeStudioPage() {
   }, []);
 
   const handleUploadComplete = useCallback((result: UploadResult) => {
+    console.log('[Resume Studio] Upload complete, result:', result);
+    console.log('[Resume Studio] Extracted data:', result.extractedData);
     setUploadResult(result);
+    if (result.extractedData) {
+      setResumeData(result.extractedData);
+      setIsDataEditorOpen(true);
+    }
     setStep("analyze");
     setError(null);
     setTrackerMessage(null);
@@ -227,7 +240,17 @@ export default function ResumeStudioPage() {
     setError(null);
     setTrackerMessage(null);
     setIsSyncingTracker(false);
+    setResumeData(null);
+    setIsDataEditorOpen(false);
     setStep("upload");
+  }, []);
+
+  const handleSaveResumeData = useCallback((data: ResumeData) => {
+    setResumeData(data);
+  }, []);
+
+  const handleVisualBuilderExport = useCallback((data: ResumeData) => {
+    setResumeData(data);
   }, []);
 
   return (
@@ -376,6 +399,12 @@ export default function ResumeStudioPage() {
                       ))}
                     </ul>
                   </div>
+                  {step === "analyze" && (
+                    <Button onClick={() => setStep("tailor")} className="mt-4">
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                      Proceed to Tailoring
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -437,7 +466,12 @@ export default function ResumeStudioPage() {
                     tailoredText={tailorResult.tailored}
                     analysis={analysis ?? undefined}
                     guardrails={tailorResult.guardrails}
+                    resumeData={resumeData ?? undefined}
                     onSuccess={handleExportSuccess}
+                    onOpenVisualBuilder={() => {
+                      console.log('onOpenVisualBuilder callback triggered');
+                      setIsVisualBuilderOpen(true);
+                    }}
                   />
                 </CardContent>
               </Card>
@@ -486,8 +520,13 @@ export default function ResumeStudioPage() {
                 tailoredText={tailorResult.tailored}
                 analysis={analysis ?? undefined}
                 guardrails={tailorResult.guardrails}
+                resumeData={resumeData ?? undefined}
                 compact
                 onSuccess={handleExportSuccess}
+                onOpenVisualBuilder={() => {
+                  console.log('Compact onOpenVisualBuilder callback triggered');
+                  setIsVisualBuilderOpen(true);
+                }}
               />
             )}
 
@@ -503,6 +542,38 @@ export default function ResumeStudioPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Resume Data Editor Dialog */}
+      {resumeData && (
+        <ResumeDataEditor
+          isOpen={isDataEditorOpen}
+          onClose={() => setIsDataEditorOpen(false)}
+          onSave={handleSaveResumeData}
+          initialData={resumeData}
+        />
+      )}
+
+      {/* Visual Resume Builder Dialog */}
+      <VisualResumeBuilder
+        isOpen={isVisualBuilderOpen}
+        onClose={() => setIsVisualBuilderOpen(false)}
+        initialData={resumeData || {
+          name: '',
+          email: '',
+          phone: '',
+          location: '',
+          linkedin: '',
+          github: '',
+          summary: '',
+          experience: [],
+          education: [],
+          skills: [],
+          projects: [],
+          certifications: [],
+        }}
+        onExport={handleVisualBuilderExport}
+        resumeId={uploadResult?.id}
+      />
     </div>
   );
 }

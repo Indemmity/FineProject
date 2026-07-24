@@ -102,14 +102,14 @@ async def list_jobs(
 
         query = query.offset(offset).limit(limit)
         result = await session.execute(query)
-        jobs = await result.scalars().all()
+        jobs = result.scalars().all()
         return [_job_to_dict(j) for j in jobs]
 
 
 async def search_jobs(
     keywords: list[str],
     source: str | None = None,
-    limit: int = 100,
+    limit: int = 500,
 ) -> list[dict[str, Any]]:
     """Search jobs by keywords in title/company/description."""
     async with get_session() as session:
@@ -128,7 +128,7 @@ async def search_jobs(
         query = query.order_by(JobModel.scraped_at.desc()).limit(limit)
 
         result = await session.execute(query)
-        jobs = await result.scalars().all()
+        jobs = result.scalars().all()
         return [_job_to_dict(j) for j in jobs]
 
 
@@ -157,7 +157,7 @@ async def count_jobs(source: str | None = None) -> int:
 async def get_sources_summary() -> list[dict[str, Any]]:
     """Get summary of available sources with counts and last scraped times."""
     async with get_session() as session:
-        sources = ["naukri", "remoteok", "wellfound"]
+        sources = ["naukri", "remoteok", "wellfound", "indeed", "timesjobs", "monster"]
         summaries = []
         for source in sources:
             query = select(

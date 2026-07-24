@@ -21,7 +21,7 @@ router = APIRouter()
 async def list_jobs_endpoint(
     source: str | None = None,
     keyword: str | None = None,
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     """List all harvested jobs with optional filtering."""
@@ -72,11 +72,14 @@ async def search_jobs_sync(
     remote_only: bool = False,
     experience_level: str | None = None,
     date_posted: int | None = None,
+    sources: str | None = Query(None, description="Comma-separated list of sources to search (e.g., indeed,timesjobs,monster)"),
 ):
     """Quick synchronous search — runs pipeline and returns results directly."""
     keywords = [k.strip() for k in q.split(",") if k.strip()]
     if not keywords:
         raise HTTPException(status_code=422, detail="At least one keyword is required")
+
+    source_list = [s.strip() for s in sources.split(",") if s.strip()] if sources else None
 
     result = await run_pipeline(
         keywords=keywords,
@@ -84,6 +87,7 @@ async def search_jobs_sync(
         remote_only=remote_only,
         experience_level=experience_level,
         date_posted=date_posted,
+        sources=source_list,
     )
     return SearchStatusResponse(
         search_id=result.get("search_id", ""),

@@ -1,4 +1,5 @@
 import type { Job } from "@/components/jobs/JobCard";
+import { getCompanyHREmail } from "@jobplatform/shared/lib/company-emails";
 
 export interface HarvesterJobResponse {
   id: string;
@@ -17,6 +18,8 @@ export interface HarvesterJobResponse {
   url: string;
   search_keyword: string;
   scraped_at: string;
+  skills?: string[];
+  contact_email?: string;
 }
 
 interface JobListResponse {
@@ -138,6 +141,8 @@ export function matchesJobQuery(
 export function toFrontendJob(job: HarvesterJobResponse): Job {
   const experienceLevel = normalizeExperienceLevel(job.experience_level) ?? inferExperienceLevel(job.title);
   const workMode = inferWorkMode(job);
+  const skills = job.skills || extractSkills(job.description, job.description_html);
+  const contactEmail = job.contact_email || extractEmail(job.description, job.description_html) || getCompanyHREmail(job.company);
 
   return {
     id: job.id,
@@ -151,6 +156,8 @@ export function toFrontendJob(job: HarvesterJobResponse): Job {
     source: formatSource(job.source),
     description: job.description?.trim() || stripHtml(job.description_html),
     salary: job.salary_range,
+    skills,
+    contactEmail,
   };
 }
 
@@ -185,6 +192,7 @@ export async function searchJobs(options: {
   remoteOnly?: boolean;
   experienceLevel?: string | null;
   datePosted?: number | null;
+  source?: string | null;
 }): Promise<Job[]> {
   const queryKeywords = buildSearchKeywords(options.query);
   const locationKeywords = buildSearchKeywords(options.location ?? "");
@@ -210,11 +218,19 @@ export async function searchJobs(options: {
   }
 
   const data = await fetchJson<JobSearchResponse>(`/api/jobs/search?${params.toString()}`);
+
   if (data.status === "failed") {
     throw new Error(data.error ?? "Job search failed");
   }
 
-  return (data.results ?? []).map(toFrontendJob);
+  let results = data.results ?? [];
+
+  if (options.source) {
+    const sourceLower = options.source.toLowerCase();
+    results = results.filter((j) => j.source.toLowerCase() === sourceLower);
+  }
+
+  return results.map(toFrontendJob);
 }
 
 async function fetchJson<T>(input: RequestInfo | URL): Promise<T> {
@@ -330,4 +346,33 @@ function stripHtml(html: string): string {
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function extractSkills(description: string, html: string): string[] {
+  const text = (description || stripHtml(html)).toLowerCase();
+  const skillKeywords = [
+    'java', 'python', 'javascript', 'react', 'angular', 'vue', 'node.js', 'spring',
+    'hibernate', 'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'sql', 'mongodb',
+    'postgresql', 'mysql', 'git', 'jenkins', 'ci/cd', 'agile', 'scrum', 'typescript',
+    'html', 'css', 'sass', 'webpack', 'rest api', 'graphql', 'microservices',
+    'linux', 'unix', 'shell scripting', 'bash', 'python', 'ruby', 'go', 'rust',
+    'machine learning', 'ai', 'data science', 'devops', 'testing', 'junit',
+    'maven', 'gradle', 'npm', 'yarn', 'webpack', 'babel', 'eslint', 'prettier'
+  ];
+  
+  const foundSkills = skillKeywords.filter(skill => text.includes(skill));
+  return [...new Set(foundSkills)]; // Remove duplicates
+}
+
+function extractEmail(description: string, html: string): string | undefined {
+  const text = description || stripHtml(html);
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  const matches = text.match(emailRegex);
+  
+  if (matches && matches.length > 0) {
+    // Return the first email found
+    return matches[0];
+  }
+  
+  return undefined;
 }

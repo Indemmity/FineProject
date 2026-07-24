@@ -8,8 +8,12 @@ describe("outreach helpers", () => {
     user_id: "user-1",
     recipient_email: "jane@example.com",
     recipient_name: "Jane Doe",
+    company_name: "Acme Corp",
+    job_title: "Software Engineer",
     subject: "Hello there",
     subject_hash: "abcdef1234567890",
+    body_html: "<p>Hello</p>",
+    body_text: "Hello",
     status: "sent",
     delivery_status: "pending",
     error_message: null,
@@ -21,7 +25,10 @@ describe("outreach helpers", () => {
   it("maps closer logs into queue items", () => {
     expect(toQueueItem(log)).toEqual({
       id: "log-1",
-      recipient: "Jane Doe <jane@example.com>",
+      companyName: "Acme Corp",
+      jobTitle: "Software Engineer",
+      recipientEmail: "jane@example.com",
+      recipientName: "Jane Doe",
       subject: "Hello there",
       status: "queued",
       createdAt: "2026-07-04T00:00:00.000Z",
@@ -31,7 +38,10 @@ describe("outreach helpers", () => {
   it("maps closer logs into delivery entries", () => {
     expect(toDeliveryEntry(log)).toEqual({
       id: "log-1",
-      recipient: "Jane Doe <jane@example.com>",
+      companyName: "Acme Corp",
+      jobTitle: "Software Engineer",
+      recipientEmail: "jane@example.com",
+      recipientName: "Jane Doe",
       subject: "Hello there",
       sentAt: "2026-07-04T00:00:00.000Z",
       status: "sent",

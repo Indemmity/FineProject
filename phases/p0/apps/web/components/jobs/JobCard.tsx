@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Building2, MapPin, Calendar, ExternalLink } from 'lucide-react';
+import { Building2, MapPin, Calendar, ExternalLink, Mail, Edit } from 'lucide-react';
 
 export interface Job {
   id: string;
@@ -17,15 +17,18 @@ export interface Job {
   source: string;
   description: string;
   salary: string | null;
+  skills?: string[];
+  contactEmail?: string | null;
 }
 
 interface JobCardProps {
   job: Job;
   onSelect?: (job: Job) => void;
+  onEditDescription?: (job: Job) => void;
   selected?: boolean;
 }
 
-export function JobCard({ job, onSelect, selected }: JobCardProps) {
+export function JobCard({ job, onSelect, onEditDescription, selected }: JobCardProps) {
   const postedDate = new Date(job.postedAt);
   const daysAgo = Math.floor((Date.now() - postedDate.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -33,7 +36,7 @@ export function JobCard({ job, onSelect, selected }: JobCardProps) {
     <Card className={selected ? 'ring-2 ring-primary' : ''}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <div>
+          <div className="flex-1">
             <CardTitle className="text-base">{job.title}</CardTitle>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -48,17 +51,35 @@ export function JobCard({ job, onSelect, selected }: JobCardProps) {
                 <Calendar className="h-3.5 w-3.5" />
                 {daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`}
               </span>
+              {job.contactEmail && (
+                <span className="flex items-center gap-1 text-primary">
+                  <Mail className="h-3.5 w-3.5" />
+                  {job.contactEmail}
+                </span>
+              )}
             </div>
           </div>
-          {onSelect && (
-            <Button
-              variant={selected ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => onSelect(job)}
-            >
-              {selected ? 'Selected' : 'Select'}
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {onEditDescription && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEditDescription(job)}
+                title="Edit job description"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+            {onSelect && (
+              <Button
+                variant={selected ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => onSelect(job)}
+              >
+                {selected ? 'Selected' : 'Select'}
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -70,6 +91,20 @@ export function JobCard({ job, onSelect, selected }: JobCardProps) {
             {job.source}
           </Badge>
         </div>
+        {job.skills && job.skills.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1">
+            {job.skills.slice(0, 5).map((skill, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {skill}
+              </Badge>
+            ))}
+            {job.skills.length > 5 && (
+              <Badge variant="secondary" className="text-xs">
+                +{job.skills.length - 5} more
+              </Badge>
+            )}
+          </div>
+        )}
         <p className="mb-3 line-clamp-3 text-sm text-muted-foreground">{job.description}</p>
         <a
           href={job.url}

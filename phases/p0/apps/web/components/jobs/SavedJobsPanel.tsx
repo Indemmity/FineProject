@@ -2,16 +2,17 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, ChevronRight } from 'lucide-react';
+import { ClipboardList, ChevronRight, Mail } from 'lucide-react';
 import Link from 'next/link';
 import type { Job } from './JobCard';
 
 interface SavedJobsPanelProps {
   selectedJobs: Job[];
   onRemove: (id: string) => void;
+  onGenerateOutreach?: (job: Job) => void;
 }
 
-export function SavedJobsPanel({ selectedJobs, onRemove }: SavedJobsPanelProps) {
+export function SavedJobsPanel({ selectedJobs, onRemove, onGenerateOutreach }: SavedJobsPanelProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -35,10 +36,25 @@ export function SavedJobsPanel({ selectedJobs, onRemove }: SavedJobsPanelProps) 
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{job.title}</p>
                   <p className="truncate text-xs text-muted-foreground">{job.company}</p>
+                  {job.contactEmail && (
+                    <p className="truncate text-xs text-primary">{job.contactEmail}</p>
+                  )}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => onRemove(job.id)}>
-                  Remove
-                </Button>
+                <div className="flex gap-1">
+                  {onGenerateOutreach && job.contactEmail && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => onGenerateOutreach(job)}
+                      title="Generate outreach email"
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => onRemove(job.id)}>
+                    Remove
+                  </Button>
+                </div>
               </div>
             ))}
             <Link href="/dashboard/resume">

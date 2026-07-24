@@ -83,7 +83,6 @@ export const resumes = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     originalFilePath: text('original_file_path').notNull(),
-    originalFileContent: text('original_file_content'), // base64 encoded original file
     parsedText: text('parsed_text').notNull().default(''),
     tailoredText: jsonb('tailored_text').notNull().default('{}'),
     matchScore: integer('match_score'),

@@ -6,9 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DeliveryLog } from "@/components/outreach/DeliveryLog";
 import { SendQueue } from "@/components/outreach/SendQueue";
+import { SendDialog } from "@/components/outreach/SendDialog";
 import {
+  cancelOutreach,
   getOutreachLogs,
   getOutreachStats,
+  sendOutreach,
   toDeliveryEntry,
   toQueueItem,
   type OutreachLogResponse,
@@ -21,10 +24,14 @@ export default function OutreachConsolePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [draftToSend, setDraftToSend] = useState<OutreachLogResponse | null>(null);
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
 
   const loadOutreachData = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
+    setSuccess(null);
 
     try {
       const [nextStats, nextLogs] = await Promise.all([
@@ -53,6 +60,43 @@ export default function OutreachConsolePage() {
     [logs],
   );
 
+  const sentItems = useMemo(
+    () =>
+      logs
+        .map(toQueueItem)
+        .filter((item) => item.status === "sent"),
+    [logs],
+  );
+
+  const handleSend = useCallback((id: string) => {
+    const log = logs.find((l) => l.id === id);
+    if (log) {
+      setDraftToSend(log);
+      setSendDialogOpen(true);
+    }
+  }, [logs]);
+
+  const handleConfirmSend = useCallback(async (data: { toEmail: string; toName: string; subject: string }) => {
+    if (!draftToSend) return;
+    const result = await sendOutreach(draftToSend.id, {
+      toEmail: data.toEmail,
+      toName: data.toName,
+      subject: data.subject,
+    });
+    await loadOutreachData();
+    setSuccess(`Email sent to ${data.toEmail} at ${new Date(result.sentAt || Date.now()).toLocaleTimeString()}`);
+  }, [draftToSend, loadOutreachData]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await cancelOutreach(id);
+      setLogs((prev) => prev.filter((l) => l.id !== id));
+      setSuccess("Draft cancelled");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel draft");
+    }
+  }, []);
+
   const deliveryEntries = useMemo(() => logs.map(toDeliveryEntry), [logs]);
 
   const metrics = [
@@ -77,6 +121,9 @@ export default function OutreachConsolePage() {
         </Button>
       </div>
 
+      {success && (
+        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-400">{success}</div>
+      )}
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
       )}
@@ -120,8 +167,11 @@ export default function OutreachConsolePage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle className="text-lg">Send Queue</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {queueItems.length} item{queueItems.length !== 1 ? "s" : ""} pending
+            </p>
           </CardHeader>
           <CardContent>
             {isLoading && queueItems.length === 0 ? (
@@ -129,13 +179,33 @@ export default function OutreachConsolePage() {
                 Loading outreach queue...
               </p>
             ) : (
-              <SendQueue items={queueItems} />
+              <SendQueue items={queueItems} onSend={handleSend} onDelete={handleDelete} />
             )}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Sent Mail</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {sentItems.length} email{sentItems.length !== 1 ? "s" : ""} sent
+            </p>
+          </CardHeader>
+          <CardContent>
+            {isLoading && sentItems.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Loading sent mail...
+              </p>
+            ) : (
+              <SendQueue items={sentItems} />
+            )}
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-lg">Delivery Log</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {deliveryEntries.length} total log{deliveryEntries.length !== 1 ? "s" : ""}
+            </p>
           </CardHeader>
           <CardContent>
             {isLoading && deliveryEntries.length === 0 ? (
@@ -143,11 +213,27 @@ export default function OutreachConsolePage() {
                 Loading delivery log...
               </p>
             ) : (
-              <DeliveryLog entries={deliveryEntries} />
+              <DeliveryLog entries={deliveryEntries} onSend={handleSend} />
             )}
           </CardContent>
         </Card>
       </div>
+
+      {draftToSend && (
+        <SendDialog
+          open={sendDialogOpen}
+          onOpenChange={(open) => {
+            setSendDialogOpen(open);
+            if (!open) setDraftToSend(null);
+          }}
+          recipientEmail={draftToSend.recipient_email}
+          recipientName={draftToSend.recipient_name}
+          subject={draftToSend.subject}
+          bodyHtml={draftToSend.body_html}
+          bodyText={draftToSend.body_text}
+          onConfirm={handleConfirmSend}
+        />
+      )}
     </div>
   );
 }

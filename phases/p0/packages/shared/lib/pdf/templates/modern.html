@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #333;
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 0.5in;
+        }
+        
+        .header {
+            margin-bottom: 20px;
+        }
+        
+        .name {
+            font-size: 24pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .contact {
+            font-size: 10pt;
+            color: #7f8c8d;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
+        
+        .summary {
+            font-size: 11pt;
+            color: #34495e;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #2c3e50;
+            text-transform: uppercase;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 4px;
+            margin-bottom: 12px;
+        }
+        
+        .job {
+            margin-bottom: 16px;
+        }
+        
+        .job-header {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+        
+        .job-details {
+            font-size: 10pt;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+        }
+        
+        .job-bullets {
+            margin-left: 20px;
+        }
+        
+        .job-bullets li {
+            margin-bottom: 4px;
+            color: #34495e;
+        }
+        
+        .education-item {
+            margin-bottom: 12px;
+        }
+        
+        .education-degree {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .education-details {
+            font-size: 10pt;
+            color: #7f8c8d;
+        }
+        
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .skill-tag {
+            background: #ecf0f1;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 10pt;
+            color: #2c3e50;
+        }
+        
+        ul {
+            list-style-type: disc;
+        }
+        
+        p {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="name">{{name}}</div>
+        <div class="contact">{{contact}}</div>
+        <div class="summary">{{summary}}</div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Experience</div>
+        {{experience}}
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Education</div>
+        {{education}}
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Skills</div>
+        <div class="skills-list">{{skills}}</div>
+    </div>
+</body>
+</html>

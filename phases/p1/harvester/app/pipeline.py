@@ -123,7 +123,13 @@ async def run_pipeline(
 
         # Phase 5: Store in database
         inserted_count = await upsert_jobs(unique)
-        stored = await search_jobs(keywords, limit=500)
+        
+        # Filter results by source if specific sources were requested
+        if sources:
+            # Filter stored results to only include requested sources
+            stored = [job for job in await search_jobs(keywords, limit=500) if job.get("source") in sources]
+        else:
+            stored = await search_jobs(keywords, limit=500)
 
         _search_state[search_id]["progress"] = 100
         _search_state[search_id]["status"] = "completed"

@@ -45,3 +45,36 @@ export async function proxyJsonRequest(
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
+
+export async function proxyJsonPost(
+  baseUrl: string,
+  path: string,
+  searchParams: URLSearchParams,
+): Promise<NextResponse> {
+  const targetUrl = new URL(path, normalizeBaseUrl(baseUrl));
+  targetUrl.search = searchParams.toString();
+
+  try {
+    const upstream = await fetch(targetUrl.toString(), {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    const body = await upstream.text();
+    const contentType = upstream.headers.get("content-type") ?? "application/json; charset=utf-8";
+
+    return new NextResponse(body, {
+      status: upstream.status,
+      headers: {
+        "content-type": contentType,
+        "retry-after": upstream.headers.get("retry-after") ?? "",
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to proxy request";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
+}

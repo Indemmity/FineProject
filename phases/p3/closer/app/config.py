@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # General
     log_level: str = "INFO"
+    base_url: str = "http://localhost:8002"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

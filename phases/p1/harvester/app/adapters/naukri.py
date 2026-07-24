@@ -36,13 +36,22 @@ class NaukriAdapter(JobSourceAdapter):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._search_sync, params)
 
+    def _build_search_url(self, keyword: str, location: str | None) -> str:
+        """Build Naukri search URL with optional location."""
+        base = f"{BASE_URL}/{keyword}-jobs"
+        if location:
+            loc_slug = location.strip().lower().replace(" ", "-")
+            return f"{base}-in-{loc_slug}"
+        return base
+
     def _search_sync(self, params: SearchParams) -> list[RawJobListing]:
         """Synchronous Selenium search."""
         driver = self._create_driver()
         try:
             listings = []
             keyword = "+".join(params.keywords)
-            search_url = f"{BASE_URL}/{keyword}-jobs"
+            location = params.location
+            search_url = self._build_search_url(keyword, location)
 
             for page in range(3):  # scrape up to 3 pages
                 try:
@@ -97,38 +106,46 @@ class NaukriAdapter(JobSourceAdapter):
         listings = []
         try:
             job_cards = WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[class*='jobTuple'], [class*='job-card'], article"))
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".cust-job-tuple"))
             )
         except TimeoutException:
             return []
 
+        # First pass: extract basic data from cards
+        card_data = []
         for card in job_cards:
             try:
-                listing = self._extract_card(card, keyword)
-                if listing:
-                    listings.append(listing)
+                card_data.append(self._extract_card_basic(card, keyword))
             except Exception:
                 continue
 
+        # Second pass: get full descriptions from detail pages
+        for data in card_data:
+            if data and data['url']:
+                full_desc = self._get_full_description(data['url'])
+                if full_desc:
+                    data['description'] = full_desc
+                listings.append(self._create_listing(data, keyword))
+
         return listings
 
-    def _extract_card(self, card: Any, keyword: str) -> RawJobListing | None:
-        """Extract data from a single job card element."""
+    def _extract_card_basic(self, card: Any, keyword: str) -> dict[str, Any] | None:
+        """Extract basic data from a single job card element."""
         try:
-            title_el = card.find_element(By.CSS_SELECTOR, "[class*='title'], a[class*='jobTitle']")
+            title_el = card.find_element(By.CSS_SELECTOR, "a.title")
             title = title_el.text.strip()
         except NoSuchElementException:
             return None
 
         try:
-            company_el = card.find_element(By.CSS_SELECTOR, "[class*='subTitle'], [class*='company']")
+            company_el = card.find_element(By.CSS_SELECTOR, "a.comp-name")
             company = company_el.text.strip()
         except NoSuchElementException:
             company = ""
 
         try:
-            location_el = card.find_element(By.CSS_SELECTOR, "[class*='location']")
-            location = location_el.text.strip()
+            location_el = card.find_element(By.CSS_SELECTOR, "span.locWdth")
+            location = location_el.get_attribute("title") or location_el.text.strip()
         except NoSuchElementException:
             location = None
 
@@ -139,36 +156,95 @@ class NaukriAdapter(JobSourceAdapter):
             salary = None
 
         try:
-            desc_el = card.find_element(By.CSS_SELECTOR, "[class*='description'], [class*='job-description']")
+            desc_el = card.find_element(By.CSS_SELECTOR, "span.job-desc")
             description = desc_el.text.strip()
         except NoSuchElementException:
             description = ""
 
         try:
-            url_el = card.find_element(By.CSS_SELECTOR, "a[href*='naukri.com']")
+            url_el = card.find_element(By.CSS_SELECTOR, "a.title")
             url = url_el.get_attribute("href") or ""
         except NoSuchElementException:
             url = ""
 
+        try:
+            posted_el = card.find_element(By.CSS_SELECTOR, "span.job-post-day")
+            posted_date = posted_el.text.strip()
+        except NoSuchElementException:
+            posted_date = None
+
         raw_id = hashlib.md5(f"{title}:{company}:{keyword}".encode()).hexdigest()[:12]
 
+        return {
+            'title': title,
+            'company': company,
+            'location': location,
+            'description': description,
+            'salary': salary,
+            'url': url,
+            'posted_date': posted_date,
+            'raw_id': raw_id,
+        }
+
+    def _get_full_description(self, url: str) -> str | None:
+        """Fetch full job description from detail page."""
+        if not url:
+            return None
+            
+        try:
+            driver = self._create_driver()
+            try:
+                driver.get(url)
+                time.sleep(2)
+                self._dismiss_cookie_consent(driver)
+                
+                # Try multiple selectors for full job description
+                desc_selectors = [
+                    ".job-desc",
+                    ".detailed-job-profile",
+                    "[class*='job-description']",
+                    "#jobDescription",
+                    ".JD",
+                    ".job-details",
+                    "[class*='description']",
+                    ".styles_JD__",
+                    ".styles_job-desc__"
+                ]
+                
+                for selector in desc_selectors:
+                    try:
+                        full_desc_el = driver.find_element(By.CSS_SELECTOR, selector)
+                        full_text = full_desc_el.text.strip()
+                        if full_text and len(full_text) > 100:  # Only use if substantial
+                            return full_text
+                    except NoSuchElementException:
+                        continue
+                return None
+            finally:
+                driver.quit()
+        except Exception:
+            return None
+
+    def _create_listing(self, data: dict[str, Any], keyword: str) -> RawJobListing:
+        """Create RawJobListing from extracted data."""
         return RawJobListing(
             source="naukri",
-            source_id=raw_id,
-            title=title,
-            company=company,
-            location=location,
-            description=description,
-            salary_range=salary,
+            source_id=data['raw_id'],
+            title=data['title'],
+            company=data['company'],
+            location=data['location'],
+            description=data['description'],
+            salary_range=data['salary'],
             job_type="full-time",
-            url=url,
+            url=data['url'],
+            posted_date=data['posted_date'],
             raw_data={"keyword": keyword},
         )
 
     def _has_next_page(self, driver: webdriver.Chrome) -> bool:
         """Check if there's a next page button."""
         try:
-            next_btn = driver.find_element(By.CSS_SELECTOR, "a[class*='next'], [aria-label='Next'], [rel='next']")
+            next_btn = driver.find_element(By.CSS_SELECTOR, "a[class*='next'], [aria-label='Next'], [rel='next'], [class*='page-btn']:not([class*='disabled'])")
             return bool(next_btn)
         except NoSuchElementException:
             return False

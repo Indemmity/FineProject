@@ -43,6 +43,7 @@ async function upsertUser(email: string, name: string): Promise<string> {
 }
 
 export const authOptions: NextAuthOptions = {
+  debug: process.env.NODE_ENV === 'development',
   providers: [
     // ✦ Development-only demo user — bypasses OAuth for local testing.
     //   In production this provider returns null, so no JWT can be minted.
@@ -103,7 +104,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ session, token }) {
-      if (session.user && token.sub) {
+      if (session?.user && token?.sub) {
         (session.user as Record<string, unknown>).id = token.sub;
       }
       return session;
@@ -127,4 +128,5 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 24 * 60 * 60,
   },
+  secret: process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production',
 };

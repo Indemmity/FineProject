@@ -41,6 +41,15 @@ export async function POST(
     // Check guardrails
     const guardrails = await checkGuardrails(resume.text, tailoredText);
 
+    // Sanitize tailored text to remove null bytes that cause PostgreSQL encoding errors
+    const sanitizedTailoredText = tailoredText.replace(/\x00/g, '');
+    const sanitizedSections = tailored.sections.map(section => ({
+      ...section,
+      original: section.original.replace(/\x00/g, ''),
+      tailored: section.tailored.replace(/\x00/g, ''),
+      reason: section.reason.replace(/\x00/g, ''),
+    }));
+
     // Persist tailored text if database is available
     const db = getDb();
     if (db) {
@@ -48,7 +57,7 @@ export async function POST(
         await db
           .update(resumes)
           .set({
-            tailoredText: { tailored: tailoredText, sections: tailored.sections },
+            tailoredText: { tailored: sanitizedTailoredText, sections: sanitizedSections },
           })
           .where(eq(resumes.id, id))
           .execute();
@@ -59,8 +68,8 @@ export async function POST(
 
     return NextResponse.json({
       original: resume.text,
-      tailored: tailoredText,
-      sections: tailored.sections,
+      tailored: sanitizedTailoredText,
+      sections: sanitizedSections,
       diff,
       guardrails,
       resumeId: id,

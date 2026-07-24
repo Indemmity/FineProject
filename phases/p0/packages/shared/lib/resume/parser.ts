@@ -42,6 +42,11 @@ export async function parseResume(
 }
 
 async function parsePDF(buffer: Buffer): Promise<ParsedResume> {
+  // Set worker source to prevent Turbopack bundling issues
+  if (!PDFParse.setWorker()) {
+    const workerPath = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    PDFParse.setWorker(workerPath);
+  }
   const parser = new PDFParse({ data: buffer });
 
   try {

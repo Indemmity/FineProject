@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowRight, RefreshCw, Sparkles, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Application, ApplicationStatus } from "@jobplatform/shared";
 import { listApplications, updateApplicationRecord } from "@/lib/applications-client";
+import { generateOutreach } from "@/lib/outreach";
 import { buildSelectedJobMap, loadSelectedJobs } from "@/lib/selected-jobs";
 import type { Job } from "@/components/jobs/JobCard";
 
@@ -104,6 +105,29 @@ export default function TrackerPage() {
       responseRate,
     };
   }, [applications]);
+
+  const handleGenerateOutreach = useCallback(
+    async (application: Application, job: Job | undefined) => {
+      setUpdatingId(application.id);
+      setError(null);
+
+      try {
+        await generateOutreach({
+          applicationId: application.id,
+          recipientName: job?.company ?? "",
+          recipientEmail: "",
+          job: job as unknown as Record<string, unknown>,
+          application: application as unknown as Record<string, unknown>,
+        });
+        setError(`Outreach email drafted for ${job?.company ?? "job"}. Check the Outreach Console to send it.`);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setUpdatingId(null);
+      }
+    },
+    [],
+  );
 
   const handleAdvance = useCallback(
     async (application: Application) => {
@@ -296,9 +320,21 @@ export default function TrackerPage() {
                           )}
 
                           <div className="mt-3 flex items-center justify-between gap-2">
-                            <div className="text-xs text-muted-foreground">
-                              {job?.source ?? "Local tracker"}
-                            </div>
+                            {application.status === "tailored" ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => void handleGenerateOutreach(application, job)}
+                                disabled={updatingId === application.id}
+                              >
+                                <Send className="mr-1 h-3.5 w-3.5" />
+                                {updatingId === application.id ? "Generating..." : "Send Email"}
+                              </Button>
+                            ) : (
+                              <div className="text-xs text-muted-foreground">
+                                {job?.source ?? "Local tracker"}
+                              </div>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"

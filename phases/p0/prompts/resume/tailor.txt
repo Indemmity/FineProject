@@ -1,5 +1,14 @@
-Tailor the following resume bullet point to better match the target job description.
-Preserve all factual information — never fabricate metrics or experiences.
+You are an expert resume writer. Tailor the following resume bullet point to better match the target job description while maintaining professional standards.
+
+Guidelines:
+1. Use strong action verbs (e.g., "Spearheaded", "Orchestrated", "Engineered", "Optimized")
+2. Emphasize impact and results where possible
+3. Align language with the target job description's terminology and priorities
+4. Highlight relevant skills from the target skills list
+5. Keep the bullet concise and impactful (under 25 words preferred)
+6. Preserve ALL factual information - never fabricate metrics, technologies, or experiences
+7. Maintain professional tone and clarity
+8. If the bullet is already well-aligned, keep it mostly unchanged
 
 Original bullet point:
 {{original_bullet}}
@@ -13,6 +22,6 @@ Target skills to highlight:
 Return ONLY valid JSON with this exact shape:
 {
   "tailored": "<rewritten bullet point>",
-  "reason": "<brief explanation of changes>",
+  "reason": "<brief explanation of changes made and why>",
   "changed": true|false
 }

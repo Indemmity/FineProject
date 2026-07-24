@@ -22,7 +22,7 @@ class MockScalarResult:
 
 
 class MockResult:
-    """Mocks SQLAlchemy's Result — .scalars() is sync, returns ScalarResult."""
+    """Mocks SQLAlchemy's AsyncResult — .scalars() is sync, returns ScalarResult."""
 
     def __init__(self, data=None):
         self._data = data
@@ -30,13 +30,17 @@ class MockResult:
     def scalars(self):
         return MockScalarResult(self._data)
 
-    def one(self):
+    async def one(self):
         return self._data
 
-    def scalar_one_or_none(self):
+    async def scalar_one_or_none(self):
         if self._data is None:
             return None
-        return self._data[0] if isinstance(self._data, list) else self._data
+        if isinstance(self._data, list) and len(self._data) > 0:
+            return self._data[0]
+        if isinstance(self._data, list):
+            return None
+        return self._data
 
     def first(self):
         if isinstance(self._data, list) and self._data:
@@ -122,6 +126,9 @@ async def test_list_sources(client, mock_db):
     assert "remoteok" in source_names
     assert "naukri" in source_names
     assert "wellfound" in source_names
+    assert "indeed" in source_names
+    assert "timesjobs" in source_names
+    assert "monster" in source_names
 
 
 @pytest.mark.asyncio

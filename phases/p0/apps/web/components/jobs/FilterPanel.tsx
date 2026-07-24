@@ -3,7 +3,33 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+
+const LOCATION_OPTIONS = [
+  { value: '', label: 'All Locations' },
+  { value: 'Bangalore', label: 'Bangalore' },
+  { value: 'Mumbai', label: 'Mumbai' },
+  { value: 'Delhi', label: 'Delhi' },
+  { value: 'Hyderabad', label: 'Hyderabad' },
+  { value: 'Chennai', label: 'Chennai' },
+  { value: 'Kolkata', label: 'Kolkata' },
+  { value: 'Pune', label: 'Pune' },
+  { value: 'Ahmedabad', label: 'Ahmedabad' },
+  { value: 'Jaipur', label: 'Jaipur' },
+  { value: 'Lucknow', label: 'Lucknow' },
+  { value: 'Noida', label: 'Noida' },
+  { value: 'Gurgaon', label: 'Gurgaon' },
+  { value: 'Chandigarh', label: 'Chandigarh' },
+  { value: 'Indore', label: 'Indore' },
+  { value: 'Bhopal', label: 'Bhopal' },
+  { value: 'Kochi', label: 'Kochi' },
+  { value: 'Coimbatore', label: 'Coimbatore' },
+  { value: 'Nagpur', label: 'Nagpur' },
+  { value: 'Visakhapatnam', label: 'Visakhapatnam' },
+  { value: 'Surat', label: 'Surat' },
+  { value: 'Patna', label: 'Patna' },
+  { value: 'India', label: 'India (All)' },
+  { value: 'Remote', label: 'Remote' },
+];
 
 interface FilterOption {
   value: string;
@@ -17,6 +43,10 @@ interface FilterPanelProps {
   onRemoteChange: (v: string | null) => void;
   selectedExperience: string | null;
   onExperienceChange: (v: string | null) => void;
+  selectedSource: string | null;
+  onSourceChange: (v: string | null) => void;
+  datePosted: number | null;
+  onDatePostedChange: (v: number | null) => void;
 }
 
 const REMOTE_OPTIONS: FilterOption[] = [
@@ -30,6 +60,22 @@ const EXPERIENCE_OPTIONS: FilterOption[] = [
   { value: 'mid', label: 'Mid Level' },
   { value: 'senior', label: 'Senior' },
   { value: 'lead', label: 'Lead / Manager' },
+];
+
+const SOURCE_OPTIONS: FilterOption[] = [
+  { value: 'remoteok', label: 'RemoteOK' },
+  { value: 'naukri', label: 'Naukri' },
+  { value: 'wellfound', label: 'Wellfound' },
+  { value: 'indeed', label: 'Indeed' },
+  { value: 'timesjobs', label: 'TimesJobs' },
+  { value: 'monster', label: 'Monster' },
+];
+
+const DATE_OPTIONS: { value: number | null; label: string }[] = [
+  { value: null, label: 'Any' },
+  { value: 1, label: '24h' },
+  { value: 7, label: '7d' },
+  { value: 30, label: '30d' },
 ];
 
 function FilterBadge({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -50,18 +96,28 @@ export function FilterPanel({
   onRemoteChange,
   selectedExperience,
   onExperienceChange,
+  selectedSource,
+  onSourceChange,
+  datePosted,
+  onDatePostedChange,
 }: FilterPanelProps) {
-  const hasFilters = location || selectedRemote || selectedExperience;
+  const hasFilters = location || selectedRemote || selectedExperience || selectedSource || datePosted;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        <Input
+      <div className="flex flex-wrap gap-2 items-center">
+        <select
           value={location}
           onChange={(e) => onLocationChange(e.target.value)}
-          placeholder="Location..."
-          className="w-40"
-        />
+          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {LOCATION_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div className="h-5 w-px bg-border mx-1" />
         {REMOTE_OPTIONS.map((opt) => (
           <Button
             key={opt.value}
@@ -72,12 +128,38 @@ export function FilterPanel({
             {opt.label}
           </Button>
         ))}
+        <div className="h-5 w-px bg-border mx-1" />
         {EXPERIENCE_OPTIONS.map((opt) => (
           <Button
             key={opt.value}
             variant={selectedExperience === opt.value ? 'secondary' : 'outline'}
             size="sm"
             onClick={() => onExperienceChange(selectedExperience === opt.value ? null : opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-muted-foreground font-medium mr-1">Source:</span>
+        {SOURCE_OPTIONS.map((opt) => (
+          <Button
+            key={opt.value}
+            variant={selectedSource === opt.value ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => onSourceChange(selectedSource === opt.value ? null : opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+        <div className="h-5 w-px bg-border mx-1" />
+        <span className="text-xs text-muted-foreground font-medium mr-1">Posted:</span>
+        {DATE_OPTIONS.map((opt) => (
+          <Button
+            key={opt.label}
+            variant={datePosted === opt.value ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => onDatePostedChange(opt.value === datePosted ? null : opt.value)}
           >
             {opt.label}
           </Button>
@@ -96,6 +178,18 @@ export function FilterPanel({
             <FilterBadge
               label={EXPERIENCE_OPTIONS.find((o) => o.value === selectedExperience)!.label}
               onRemove={() => onExperienceChange(null)}
+            />
+          )}
+          {selectedSource && (
+            <FilterBadge
+              label={SOURCE_OPTIONS.find((o) => o.value === selectedSource)!.label}
+              onRemove={() => onSourceChange(null)}
+            />
+          )}
+          {datePosted && (
+            <FilterBadge
+              label={DATE_OPTIONS.find((o) => o.value === datePosted)!.label}
+              onRemove={() => onDatePostedChange(null)}
             />
           )}
         </div>

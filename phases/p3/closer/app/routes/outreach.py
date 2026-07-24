@@ -1,5 +1,7 @@
 """REST API routes for email outreach."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException, Query
 
 from ..email_generator import generate_email
@@ -23,6 +25,8 @@ async def generate_outreach(
     recipient_name: str = "",
     recipient_email: str = "",
     template_type: str = "cold",
+    company_name: str = "",
+    job_title: str = "",
 ):
     """Generate an email draft for a given application."""
     try:
@@ -33,6 +37,11 @@ async def generate_outreach(
             recipient_name=recipient_name,
             recipient_email=recipient_email,
         )
+        # Extract company/job info from params (fall back to dict if not passed directly)
+        if not company_name:
+            company_name = (job or {}).get("company", "") or (application or {}).get("company", "")
+        if not job_title:
+            job_title = (job or {}).get("title", "") or (application or {}).get("role", "") or ""
         # Log the draft
         log_id = outreach_logger.log_send(
             application_id=application_id,
@@ -41,12 +50,25 @@ async def generate_outreach(
             recipient_name=recipient_name,
             subject=email["subject"],
             status="draft",
+            body_html=email["body_html"],
+            body_text=email["body_text"],
+            company_name=company_name,
+            job_title=job_title,
+        )
+        # Inject tracking pixel into HTML body
+        pixel_url = f"{settings.base_url}/api/outreach/{log_id}/track-open"
+        tracked_html = email["body_html"] + (
+            f'<img src="{pixel_url}" width="1" height="1" alt="" style="display:none;" />'
+        )
+        # Update stored body_html to include tracking pixel
+        outreach_logger.update_log_status(
+            log_id, status="draft", extras={"body_html": tracked_html}
         )
         return {
             "draft": {
                 "id": log_id,
                 "subject": email["subject"],
-                "body_html": email["body_html"],
+                "body_html": tracked_html,
                 "body_text": email["body_text"],
             },
             "applicationId": application_id,
@@ -75,6 +97,22 @@ async def send_outreach(
     application_id: str = "",
 ):
     """Send an email. Respects dry-run, rate limits, and queuing."""
+    # If body content not provided, try to look it up from the stored log
+    log_entry = outreach_logger.get_log_entry(outreach_id)
+    if log_entry:
+        if log_entry.get("body_html"):
+            body_html = body_html or log_entry["body_html"]
+        if log_entry.get("body_text"):
+            body_text = body_text or log_entry["body_text"]
+        if log_entry.get("recipient_email"):
+            to_email = to_email or log_entry["recipient_email"]
+        if log_entry.get("recipient_name"):
+            to_name = to_name or log_entry["recipient_name"]
+        if log_entry.get("subject"):
+            subject = subject or log_entry["subject"]
+        if log_entry.get("application_id"):
+            application_id = application_id or log_entry["application_id"]
+
     # Rate limit check
     allowed, retry_after = rate_limiter.check(user_id)
     if not allowed:
@@ -86,18 +124,21 @@ async def send_outreach(
 
     # Check dry-run mode
     if settings.dry_run or settings.send_mode == "draft":
-        log_id = outreach_logger.log_send(
-            application_id=application_id or outreach_id,
-            user_id=user_id,
-            recipient_email=to_email,
-            recipient_name=to_name,
-            subject=subject,
+        outreach_logger.update_log_status(
+            outreach_id,
             status="draft",
+            extras={
+                "recipient_email": to_email,
+                "recipient_name": to_name,
+                "subject": subject,
+                "body_html": body_html,
+                "body_text": body_text,
+            },
         )
         return {
             "status": "draft",
-            "message": "Draft created (dry-run mode)",
-            "logId": log_id,
+            "message": "Draft updated (dry-run mode)",
+            "logId": outreach_id,
         }
 
     # Send via SMTP
@@ -112,20 +153,24 @@ async def send_outreach(
     if not result.success:
         return {"status": "failed", "error": result.error}
 
-    # Log the send
-    log_id = outreach_logger.log_send(
-        application_id=application_id or outreach_id,
-        user_id=user_id,
-        recipient_email=to_email,
-        recipient_name=to_name,
-        subject=subject,
+    # Update the original draft's status to sent (keeps same ID)
+    outreach_logger.update_log_status(
+        outreach_id,
         status="sent",
+        extras={
+            "recipient_email": to_email,
+            "recipient_name": to_name,
+            "subject": subject,
+            "body_html": body_html,
+            "body_text": body_text,
+        },
     )
 
     return {
         "status": "sent",
         "messageId": result.message_id,
-        "logId": log_id,
+        "logId": outreach_id,
+        "sentAt": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -180,6 +225,30 @@ async def track_event(outreach_id: str, event: str, error: str | None = None):
     if not success:
         raise HTTPException(status_code=404, detail="Log entry not found")
     return {"status": "tracked", "event": event}
+
+
+@router.get("/{outreach_id}/track-open")
+async def track_open_pixel(outreach_id: str):
+    """Tracking pixel endpoint — logs 'opened' event and returns a 1×1 transparent GIF."""
+    track_delivery(outreach_id, "opened")
+    # 1×1 transparent GIF
+    gif = (
+        b"GIF89a\x01\x00\x01\x00\x80\x00\x00"
+        b"\xff\xff\xff\x00\x00\x00!\xf9\x04\x00"
+        b"\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00"
+        b"\x01\x00\x00\x02\x02D\x01\x00;"
+    )
+    from fastapi.responses import Response
+    return Response(content=gif, media_type="image/gif")
+
+
+@router.post("/{outreach_id}/cancel")
+async def cancel_outreach(outreach_id: str):
+    """Cancel / remove a draft from the queue."""
+    success = outreach_logger.update_log_status(outreach_id, status="cancelled")
+    if not success:
+        raise HTTPException(status_code=404, detail="Log entry not found")
+    return {"status": "cancelled", "logId": outreach_id}
 
 
 @router.get("/export")

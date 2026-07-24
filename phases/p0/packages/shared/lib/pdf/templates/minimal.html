@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.3;
+            color: #000;
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 0.5in;
+        }
+        
+        .header {
+            margin-bottom: 15px;
+        }
+        
+        .name {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .contact {
+            font-size: 9pt;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+        
+        .summary {
+            font-size: 10pt;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+        }
+        
+        .section {
+            margin-bottom: 15px;
+        }
+        
+        .section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .job {
+            margin-bottom: 12px;
+        }
+        
+        .job-header {
+            font-size: 10pt;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .job-details {
+            font-size: 9pt;
+            margin-bottom: 5px;
+        }
+        
+        .job-bullets {
+            margin-left: 18px;
+        }
+        
+        .job-bullets li {
+            margin-bottom: 2px;
+        }
+        
+        .education-item {
+            margin-bottom: 8px;
+        }
+        
+        .education-degree {
+            font-size: 10pt;
+            font-weight: bold;
+        }
+        
+        .education-details {
+            font-size: 9pt;
+        }
+        
+        .skills-list {
+            margin-left: 18px;
+        }
+        
+        .skills-list li {
+            margin-bottom: 2px;
+        }
+        
+        ul {
+            list-style-type: disc;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="name">{{name}}</div>
+        <div class="contact">{{contact}}</div>
+    </div>
+    
+    <div class="summary">{{summary}}</div>
+    
+    <div class="section">
+        <div class="section-title">Experience</div>
+        {{experience}}
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Education</div>
+        {{education}}
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Skills</div>
+        <ul class="skills-list">{{skills}}</ul>
+    </div>
+</body>
+</html>

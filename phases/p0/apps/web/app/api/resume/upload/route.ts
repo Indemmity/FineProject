@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseResume } from "@jobplatform/shared/lib/resume/parser";
+import { extractResumeData } from "@jobplatform/shared/lib/resume/extractor";
 import { getDb, resumes } from "@jobplatform/shared/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/auth-options";
@@ -47,6 +48,13 @@ export async function POST(request: NextRequest) {
     const parsed = await parseResume(buffer, file.name);
     const wordCount = parsed.text.split(/\s+/).filter(Boolean).length;
     
+    console.log('[resume/upload] Parsed text length:', parsed.text.length);
+    console.log('[resume/upload] First 200 chars of parsed text:', parsed.text.substring(0, 200));
+    
+    // Extract structured resume data
+    const extractedData = extractResumeData(parsed.text);
+    console.log('[resume/upload] Extracted resume data:', JSON.stringify(extractedData, null, 2));
+    
     // Store original file as base64 for later download
     const originalFileContent = buffer.toString('base64');
 
@@ -62,7 +70,6 @@ export async function POST(request: NextRequest) {
             userId,
             originalFilePath: file.name,
             parsedText: parsed.text,
-            originalFileContent,
           })
           .returning({ id: resumes.id });
         resumeId = inserted!.id;
@@ -84,6 +91,7 @@ export async function POST(request: NextRequest) {
       text: parsed.text,
       sections: parsed.sections,
       wordCount,
+      extractedData,
     });
   } catch (e) {
     console.error("[resume/upload] Unhandled error:", e);

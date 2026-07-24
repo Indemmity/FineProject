@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Resume</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #000;
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 0.75in;
+        }
+        
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
+        
+        .name {
+            font-size: 24pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            color: #000;
+        }
+        
+        .contact {
+            font-size: 10pt;
+            color: #333;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+        
+        .summary {
+            font-size: 11pt;
+            color: #000;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 12px;
+            color: #000;
+        }
+        
+        .job {
+            margin-bottom: 16px;
+        }
+        
+        .job-header {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 4px;
+        }
+        
+        .job-details {
+            font-size: 10pt;
+            color: #333;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+        
+        .job-bullets {
+            margin-left: 20px;
+        }
+        
+        .job-bullets li {
+            margin-bottom: 4px;
+            color: #000;
+        }
+        
+        .education-item {
+            margin-bottom: 12px;
+        }
+        
+        .education-degree {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .education-details {
+            font-size: 10pt;
+            color: #333;
+            font-style: italic;
+        }
+        
+        .skills-list {
+            margin-left: 20px;
+        }
+        
+        .skills-list li {
+            margin-bottom: 3px;
+            color: #000;
+        }
+        
+        ul {
+            list-style-type: disc;
+        }
+        
+        p {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="name">{{name}}</div>
+        <div class="contact">{{contact}}</div>
+    </div>
+    
+    <div class="summary">{{summary}}</div>
+    
+    <div class="section">
+        <div class="section-title">Experience</div>
+        {{experience}}
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Education</div>
+        {{education}}
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Skills</div>
+        <ul class="skills-list">{{skills}}</ul>
+    </div>
+</body>
+</html>

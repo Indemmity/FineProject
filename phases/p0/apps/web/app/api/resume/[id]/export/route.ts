@@ -6,8 +6,159 @@ import { getDb, resumes } from "@jobplatform/shared/db";
 import { eq } from "drizzle-orm";
 import { generatePDF } from "@jobplatform/shared/lib/pdf/generator";
 import { generateComparisonPDF } from "@jobplatform/shared/lib/pdf/comparison";
+import { generatePDFWithPuppeteer, type ResumeData } from "@jobplatform/shared/lib/pdf/puppeteer-generator";
 import type { MatchResult } from "@jobplatform/shared/lib/services/analyzer";
 import type { GuardrailResult } from "@jobplatform/shared/lib/services/guardrails";
+
+function formatExperienceContent(lines: string[]): string {
+  let html = "";
+  let currentJob: string[] = [];
+  
+  for (const line of lines) {
+    // Detect job headers (company names, positions, dates)
+    if (line.match(/^[A-Z][a-z]+ [A-Z]/) || line.includes(" at ") || line.includes("|") || 
+        line.match(/\d{4}/) || line.match(/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/)) {
+      if (currentJob.length > 0) {
+        html += formatJobBlock(currentJob);
+      }
+      currentJob = [line];
+    } else {
+      currentJob.push(line);
+    }
+  }
+  
+  if (currentJob.length > 0) {
+    html += formatJobBlock(currentJob);
+  }
+  
+  return html;
+}
+
+function formatJobBlock(jobLines: string[]): string {
+  if (jobLines.length === 0) return "";
+  
+  const header = jobLines[0];
+  const bullets = jobLines.slice(1);
+  
+  let html = `<div class="job">
+    <div class="job-header">${header}</div>`;
+  
+  if (bullets.length > 0) {
+    html += `<ul class="job-bullets">`;
+    for (const bullet of bullets) {
+      if (bullet.trim()) {
+        html += `<li>${bullet}</li>`;
+      }
+    }
+    html += `</ul>`;
+  }
+  
+  html += `</div>`;
+  return html;
+}
+
+function formatEducationContent(lines: string[]): string {
+  let html = "";
+  
+  for (const line of lines) {
+    if (line.trim()) {
+      html += `<div class="education-item">
+        <div class="education-degree">${line}</div>
+      </div>`;
+    }
+  }
+  
+  return html;
+}
+
+function formatSkillsContent(lines: string[]): string {
+  let html = "";
+  
+  for (const line of lines) {
+    const skills = line.split(/,|•|\n/).map(s => s.trim()).filter(s => s);
+    for (const skill of skills) {
+      html += `<li>${skill}</li>`;
+    }
+  }
+  
+  return html;
+}
+
+function parseResumeData(filename: string, text: string): ResumeData {
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l);
+  
+  // Extract name from filename
+  const name = filename.replace(/\.(pdf|docx|txt)$/i, "").replace(/[_-]/g, " ");
+  
+  let contact = "";
+  let summary = "";
+  let experience = "";
+  let education = "";
+  let skills = "";
+  
+  let currentSection = "";
+  let sectionContent: string[] = [];
+  
+  const sectionHeadings = [
+    /summary|objective|profile/i,
+    /experience|employment|work history/i,
+    /education|academic/i,
+    /skills|technical skills|competencies/i,
+  ];
+  
+  const flushSection = () => {
+    if (currentSection && sectionContent.length > 0) {
+      const content = sectionContent.join("\n");
+      
+      if (currentSection.toLowerCase().includes("summary") || 
+          currentSection.toLowerCase().includes("objective") ||
+          currentSection.toLowerCase().includes("profile")) {
+        summary = content;
+      } else if (currentSection.toLowerCase().includes("experience") || 
+                 currentSection.toLowerCase().includes("employment") ||
+                 currentSection.toLowerCase().includes("work")) {
+        experience = formatExperienceContent(sectionContent);
+      } else if (currentSection.toLowerCase().includes("education")) {
+        education = formatEducationContent(sectionContent);
+      } else if (currentSection.toLowerCase().includes("skill")) {
+        skills = formatSkillsContent(sectionContent);
+      }
+      
+      sectionContent = [];
+    }
+  };
+  
+  for (const line of lines) {
+    const isHeading = sectionHeadings.some(re => re.test(line));
+    
+    if (isHeading && line.length < 50) {
+      flushSection();
+      currentSection = line;
+    } else if (currentSection) {
+      sectionContent.push(line);
+    } else {
+      // Before first section - collect contact info
+      if (line.includes("@") || line.match(/\(\d{3}\)/) || line.includes("linkedin") || 
+          line.includes("phone") || line.includes("email") || line.includes("http")) {
+        contact += (contact ? " | " : "") + line;
+      } else if (line.length > 20 && !line.match(/^[A-Z][a-z]+ [A-Z]/)) {
+        // Likely summary/professional profile text
+        summary += (summary ? " " : "") + line;
+      }
+    }
+  }
+  
+  flushSection();
+  
+  return {
+    name,
+    contact,
+    summary,
+    experience,
+    education,
+    skills,
+  };
+}
 
 function formatResumeAsHTML(filename: string, text: string): string {
   const lines = text.split("\n").map(l => l.trim()).filter(l => l);
@@ -20,6 +171,8 @@ function formatResumeAsHTML(filename: string, text: string): string {
   
   let currentSection = "";
   let sectionContent: string[] = [];
+  let contactInfo: string[] = [];
+  let summaryContent: string[] = [];
   
   const flushSection = () => {
     if (currentSection && sectionContent.length > 0) {
@@ -35,7 +188,9 @@ function formatResumeAsHTML(filename: string, text: string): string {
         // Experience with job titles and companies
         let jobBlock: string[] = [];
         for (const line of sectionContent) {
-          if (line.match(/^[A-Z][a-z]+ [A-Z]/) || line.includes(" at ") || line.includes("|")) {
+          // Better job detection: lines with company indicators, dates, or role patterns
+          if (line.match(/^[A-Z][a-z]+ [A-Z]/) || line.includes(" at ") || line.includes("|") || 
+              line.match(/\d{4}/) || line.match(/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/)) {
             if (jobBlock.length > 0) {
               html += `<div class="job">`;
               html += `<div class="job-header">${jobBlock[0]}</div>`;
@@ -66,7 +221,7 @@ function formatResumeAsHTML(filename: string, text: string): string {
           html += `</div>`;
         }
       } else if (currentSection.toLowerCase().includes("education")) {
-        // Education section
+        // Education section - better formatting
         for (const line of sectionContent) {
           html += `<p class="education">${line}</p>`;
         }
@@ -106,14 +261,31 @@ function formatResumeAsHTML(filename: string, text: string): string {
     } else if (currentSection) {
       sectionContent.push(line);
     } else {
-      // Before first section - likely contact info
-      if (line.includes("@") || line.match(/\(\d{3}\)/) || line.includes("linkedin")) {
-        html += `<p class="contact">${line}</p>`;
+      // Before first section - collect contact info and summary
+      if (line.includes("@") || line.match(/\(\d{3}\)/) || line.includes("linkedin") || 
+          line.includes("phone") || line.includes("email") || line.includes("http")) {
+        contactInfo.push(line);
+      } else if (line.length > 20 && !line.match(/^[A-Z][a-z]+ [A-Z]/)) {
+        // Likely summary/professional profile text
+        summaryContent.push(line);
       }
     }
   }
   
   flushSection();
+  
+  // Add contact info after name
+  if (contactInfo.length > 0) {
+    html = html.replace(`<h1 class="name">${name}</h1>`, 
+      `<h1 class="name">${name}</h1><p class="contact">${contactInfo.join(" • ")}</p>`);
+  }
+  
+  // Add summary section if exists
+  if (summaryContent.length > 0) {
+    html = html.replace(`<h1 class="name">${name}</h1>`, 
+      `<h1 class="name">${name}</h1><p class="contact">${contactInfo.join(" • ")}</p><p class="summary">${summaryContent.join(" ")}</p>`);
+  }
+  
   html += `</div>`;
   
   return html;
@@ -135,11 +307,12 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { type, tailoredText, analysis, guardrails } = body as {
+  const { type, tailoredText, analysis, guardrails, theme } = body as {
     type: "tailored" | "comparison";
     tailoredText?: string;
     analysis?: MatchResult;
     guardrails?: GuardrailResult;
+    theme?: 'professional' | 'modern' | 'classic' | 'minimal' | null;
   };
   let resolvedTailoredText = normalizeTailoredText(tailoredText);
 
@@ -200,9 +373,31 @@ export async function POST(
       filename = resume.filename;
     } else {
       const content = resolvedTailoredText ?? resume.text;
-      const html = formatResumeAsHTML(resume.filename, content);
-      pdfBuffer = await generatePDF(html, { title: resume.filename });
-      filename = `Resume_Tailored_${id.slice(0, 8)}.pdf`;
+      
+      // Use puppeteer with specific template if specified, otherwise use professional template, fallback to jsPDF
+      if (theme && theme !== 'professional') {
+        try {
+          const resumeData = parseResumeData(resume.filename, content);
+          pdfBuffer = await generatePDFWithPuppeteer({ data: resumeData, template: theme as any });
+          filename = `Resume_Tailored_${theme}_${id.slice(0, 8)}.pdf`;
+        } catch (error) {
+          console.error('Puppeteer PDF generation failed, falling back to jsPDF:', error);
+          const html = formatResumeAsHTML(resume.filename, content);
+          pdfBuffer = await generatePDF(html, { title: resume.filename });
+          filename = `Resume_Tailored_${id.slice(0, 8)}.pdf`;
+        }
+      } else {
+        try {
+          const resumeData = parseResumeData(resume.filename, content);
+          pdfBuffer = await generatePDFWithPuppeteer({ data: resumeData });
+          filename = `Resume_Tailored_${id.slice(0, 8)}.pdf`;
+        } catch (error) {
+          console.error('Puppeteer PDF generation failed, falling back to jsPDF:', error);
+          const html = formatResumeAsHTML(resume.filename, content);
+          pdfBuffer = await generatePDF(html, { title: resume.filename });
+          filename = `Resume_Tailored_${id.slice(0, 8)}.pdf`;
+        }
+      }
     }
   }
 

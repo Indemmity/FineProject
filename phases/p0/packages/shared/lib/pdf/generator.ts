@@ -16,10 +16,10 @@ export async function generatePDF(
     format: options.pageSize === "Letter" ? "letter" : "a4",
   });
 
-  const baseFontSize = options.fontSize ?? 10;
+  const baseFontSize = options.fontSize ?? 11;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 50;
+  const margin = 72; // Standard 1-inch margin for ATS
   const maxWidth = pageWidth - margin * 2;
   let y = margin;
 
@@ -41,30 +41,42 @@ export async function generatePDF(
   if (nameMatch) {
     const name = nameMatch[1]!.replace(/<[^>]+>/g, "");
     doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 51, 102); // Dark blue
+    doc.setFont("times", "bold");
+    doc.setTextColor(0, 0, 0);
     checkPageBreak(30);
-    doc.text(name, pageWidth / 2, y, { align: "center" });
-    y += 12;
+    doc.text(name, margin, y);
+    y += 14;
   }
   
   if (contactMatches && contactMatches.length > 0) {
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(80, 80, 80);
+    doc.setTextColor(0, 0, 0);
     const contactText = contactMatches
       .map(c => c.replace(/<[^>]+>/g, ""))
-      .join(" • ");
-    checkPageBreak(20);
-    doc.text(contactText, pageWidth / 2, y, { align: "center" });
-    y += 8;
+      .join(" | ");
+    checkPageBreak(15);
+    doc.text(contactText, margin, y);
+    y += 10;
   }
   
-  // Draw separator line
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(1.5);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 15;
+  // Check for summary/professional profile
+  const summaryMatch = htmlContent.match(/<p[^>]*class="summary"[^>]*>(.*?)<\/p>/i);
+  if (summaryMatch) {
+    const summary = summaryMatch[1]!.replace(/<[^>]+>/g, "");
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0, 0, 0);
+    checkPageBreak(20);
+    const wrappedSummary = doc.splitTextToSize(summary, maxWidth);
+    for (const line of wrappedSummary) {
+      doc.text(line, margin, y);
+      y += baseFontSize + 4;
+    }
+    y += 10;
+  }
+  
+  y += 8;
 
   // Process each section
   for (let i = 1; i < sections.length; i++) {
@@ -77,18 +89,12 @@ export async function generatePDF(
     const sectionTitle = section.substring(0, titleEndMatch.index).replace(/<[^>]+>/g, "").trim();
     
     // Section title
-    doc.setFontSize(13);
+    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 51, 102);
-    checkPageBreak(25);
+    doc.setTextColor(0, 0, 0);
+    checkPageBreak(20);
     doc.text(sectionTitle.toUpperCase(), margin, y);
-    y += 4;
-    
-    // Draw line under section title
-    doc.setDrawColor(0, 51, 102);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 12;
+    y += 8;
     
     // Extract section content
     const contentMatch = section.match(/<div[^>]*class="section-content"[^>]*>([\s\S]*?)<\/div>/i);
@@ -101,7 +107,7 @@ export async function generatePDF(
       const skillsText = content.replace(/<[^>]+>/g, "").trim();
       doc.setFontSize(baseFontSize);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(40, 40, 40);
+      doc.setTextColor(0, 0, 0);
       
       const wrappedSkills = doc.splitTextToSize(skillsText, maxWidth);
       for (const line of wrappedSkills) {
@@ -125,8 +131,8 @@ export async function generatePDF(
           const header = headerMatch[1]!.replace(/<[^>]+>/g, "").trim();
           doc.setFontSize(baseFontSize + 1);
           doc.setFont("helvetica", "bold");
-          doc.setTextColor(40, 40, 40);
-          checkPageBreak(baseFontSize + 12);
+          doc.setTextColor(0, 0, 0);
+          checkPageBreak(baseFontSize + 10);
           doc.text(header, margin, y);
           y += baseFontSize + 6;
         }
@@ -136,7 +142,7 @@ export async function generatePDF(
         if (listItems) {
           doc.setFontSize(baseFontSize);
           doc.setFont("helvetica", "normal");
-          doc.setTextColor(60, 60, 60);
+          doc.setTextColor(0, 0, 0);
           
           for (const item of listItems) {
             const text = item.replace(/<[^>]+>/g, "").trim();
@@ -145,7 +151,7 @@ export async function generatePDF(
             for (let k = 0; k < wrappedText.length; k++) {
               checkPageBreak(baseFontSize + 4);
               if (k === 0) {
-                doc.text("•", margin + 5, y);
+                doc.text("•", margin + 8, y);
                 doc.text(wrappedText[k], margin + 15, y);
               } else {
                 doc.text(wrappedText[k], margin + 15, y);
@@ -163,17 +169,17 @@ export async function generatePDF(
       if (eduItems) {
         doc.setFontSize(baseFontSize);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(40, 40, 40);
+        doc.setTextColor(0, 0, 0);
         
         for (const item of eduItems) {
           const text = item.replace(/<[^>]+>/g, "").trim();
+          checkPageBreak(baseFontSize + 4);
           const wrappedText = doc.splitTextToSize(text, maxWidth);
-          
           for (const line of wrappedText) {
-            checkPageBreak(baseFontSize + 4);
             doc.text(line, margin, y);
             y += baseFontSize + 4;
           }
+          y += 4;
         }
       }
     }
@@ -183,7 +189,7 @@ export async function generatePDF(
       if (listItems) {
         doc.setFontSize(baseFontSize);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(60, 60, 60);
+        doc.setTextColor(0, 0, 0);
         
         for (const item of listItems) {
           const text = item.replace(/<[^>]+>/g, "").trim();
@@ -192,7 +198,7 @@ export async function generatePDF(
           for (let k = 0; k < wrappedText.length; k++) {
             checkPageBreak(baseFontSize + 4);
             if (k === 0) {
-              doc.text("•", margin + 5, y);
+              doc.text("•", margin + 8, y);
               doc.text(wrappedText[k], margin + 15, y);
             } else {
               doc.text(wrappedText[k], margin + 15, y);

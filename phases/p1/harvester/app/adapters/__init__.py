@@ -11,11 +11,17 @@ from .base import JobSourceAdapter, SearchParams, RawJobListing
 from .remoteok import RemoteOKAdapter
 from .wellfound import WellfoundAdapter
 from .naukri import NaukriAdapter
+from .indeed import IndeedAdapter
+from .timesjobs import TimesJobsAdapter
+from .foundit import FounditAdapter
 
 ADAPTER_REGISTRY: dict[str, type[JobSourceAdapter]] = {
     "remoteok": RemoteOKAdapter,
     "wellfound": WellfoundAdapter,
     "naukri": NaukriAdapter,
+    "indeed": IndeedAdapter,
+    "timesjobs": TimesJobsAdapter,
+    "foundit": FounditAdapter,
 }
 
 

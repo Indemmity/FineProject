@@ -43,7 +43,7 @@ DATE_PATTERNS = [
     # "Just posted" / "Just now"
     (r"(?i)just\s*(?:posted|now)", lambda: _relative_date(0)),
     # "Posted 5 hours ago" — treat as today
-    (r"(\d+)\s*hours?\s*ago", lambda: _relative_date(0)),
+    (r"(\d+)\s*hours?\s*ago", lambda n: _relative_date(0)),
     # "30+ days ago"
     (r"(\d+)\+?\s*days?\s*ago", lambda n: _relative_date(int(n))),
 ]
