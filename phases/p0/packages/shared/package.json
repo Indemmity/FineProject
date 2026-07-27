@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
-    "groq-sdk": "^0.14.0",
+    "groq-sdk": "^1.4.0",
     "jspdf": "^4.2.1",
     "mammoth": "^1.12.0",
     "pdf-parse": "^2.4.5",
