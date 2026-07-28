@@ -11,10 +11,14 @@
     "clean": "turbo clean",
     "db:migrate": "cd phases/p0/packages/shared && npx drizzle-kit push",
     "db:seed": "tsx phases/p0/packages/shared/db/seed.ts",
-    "db:generate": "cd phases/p0/packages/shared && npx drizzle-kit generate"
+    "db:generate": "cd phases/p0/packages/shared && npx drizzle-kit generate",
+    "next-build": "cd phases/p0/apps/web && npx next build"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "postcss": "^8.4.0",
     "prettier": "^3.4.0",
+    "tailwindcss": "^4.0.0",
     "turbo": "^2.3.0",
     "typescript": "^5.7.0"
   },
