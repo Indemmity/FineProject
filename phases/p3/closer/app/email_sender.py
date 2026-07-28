@@ -80,6 +80,17 @@ def send_email(
 
     # Dry-run mode
     if settings.dry_run:
+        print(f"\n{'='*60}")
+        print(f"[EMAIL — DRY RUN] Would send email:")
+        print(f"  From: {sender_name} <{sender_email}>")
+        print(f"  To: {to_name} <{to_email}>")
+        print(f"  Subject: {subject}")
+        print(f"  Body (text, first 200 chars): {body_text[:200]}")
+        print(f"  SMTP Host: {settings.smtp_host}:{settings.smtp_port}")
+        print(f"  SMTP User configured: {'YES' if settings.smtp_user else 'NO'}")
+        print(f"  SMTP Password configured: {'YES' if settings.smtp_password else 'NO'}")
+        print(f"  Message-ID: {message_id}")
+        print(f"{'='*60}\n")
         logger.info(
             "DRY RUN: Would send email",
             extra={
@@ -91,6 +102,14 @@ def send_email(
         return EmailSendResult(success=True, message_id=message_id)
 
     # Real send
+    print(f"\n{'='*60}")
+    print(f"[EMAIL — LIVE SEND] Attempting SMTP delivery:")
+    print(f"  From: {sender_name} <{sender_email}>")
+    print(f"  To: {to_name} <{to_email}>")
+    print(f"  Subject: {subject}")
+    print(f"  SMTP Host: {settings.smtp_host}:{settings.smtp_port}")
+    print(f"  SMTP User: {'configured' if settings.smtp_user else 'MISSING'}")
+    print(f"{'='*60}")
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
             server.starttls()
@@ -98,6 +117,7 @@ def send_email(
                 server.login(settings.smtp_user, settings.smtp_password)
             server.sendmail(sender_email, [to_email], msg.as_string())
 
+        print(f"[EMAIL — SUCCESS] Sent to {to_email} — Message-ID: {message_id}")
         logger.info("Email sent", extra={
             "to": to_email,
             "subject": subject,
@@ -105,7 +125,13 @@ def send_email(
         })
         return EmailSendResult(success=True, message_id=message_id)
 
-    except smtplib.SMTPAuthenticationError:
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"[EMAIL — AUTH FAILED] {e}")
+        print(f"  Host: {settings.smtp_host}")
+        print(f"  User: {'configured' if settings.smtp_user else 'MISSING'}")
+        print(f"  Check: SMTP_USER and SMTP_PASSWORD in .env")
+        print(f"  Note: Gmail requires App Password (not your regular password)")
+        print(f"  Create one at: https://myaccount.google.com/apppasswords")
         logger.error("SMTP authentication failed", extra={"host": settings.smtp_host})
         return EmailSendResult(success=False, message_id=message_id, error="SMTP authentication failed")
 
