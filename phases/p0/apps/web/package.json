@@ -13,6 +13,7 @@
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
+    "@jobplatform/shared": "file:../../packages/shared",
     "@jsonresume/schema": "^1.3.0",
     "@radix-ui/react-dialog": "^1.1.17",
     "@radix-ui/react-select": "^2.3.3",
