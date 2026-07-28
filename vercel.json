@@ -1,7 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "cd phases/p0/apps/web && npx next build",
+  "buildCommand": "npm install && cd phases/p0/apps/web && npx next build",
   "outputDirectory": "phases/p0/apps/web/.next",
-  "installCommand": "cd phases/p0 && npm install",
-  "rootDirectory": "phases/p0/apps/web"
+  "installCommand": "npm ci"
 }
