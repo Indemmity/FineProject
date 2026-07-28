@@ -10,7 +10,7 @@ const nextConfig = {
   // pdfjs-dist contains a webpack bundle that dynamically imports ./pdf.worker.mjs.
   // Marking it external prevents Turbopack from resolving that import through its
   // chunk directory — it'll resolve from node_modules instead.
-  serverExternalPackages: ['pdfjs-dist', 'pdf-parse', 'puppeteer', '@jobplatform/shared'],
+  serverExternalPackages: ['pdfjs-dist', 'pdf-parse'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.logo.dev' },
