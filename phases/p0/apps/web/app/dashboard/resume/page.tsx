@@ -57,6 +57,7 @@ interface TailorResult {
   original: string;
   tailored: string;
   sections: { section: string; original: string; tailored: string; reason: string }[];
+  stats?: { bulletPointsRewritten: number; keywordsAdded: number; buzzwordsRemoved: number; bulletPointsTotal: number };
   diff: { type: DiffType; originalLine: string; tailoredLine: string; lineNumber: number; reason?: string }[];
   guardrails: { passed: boolean; issues: { type: GuardrailIssueType; field: string; message: string }[]; severity: GuardrailSeverity };
 }
@@ -220,6 +221,18 @@ export default function ResumeStudioPage() {
 
       const data = (await res.json()) as TailorResult;
       setTailorResult(data);
+
+      // Merge tailored content into resumeData so Visual Builder shows tailored text
+      if (resumeData && data.sections?.length) {
+        const tailoredSummary = data.sections
+          .filter((s) => s.tailored !== s.original)
+          .map((s) => s.tailored)
+          .join('\n');
+        setResumeData({
+          ...resumeData,
+          summary: resumeData.summary || tailoredSummary.slice(0, 500),
+        });
+      }
       setStep("export");
     } catch (err) {
       setError((err as Error).message);
@@ -247,7 +260,46 @@ export default function ResumeStudioPage() {
 
   const handleSaveResumeData = useCallback((data: ResumeData) => {
     setResumeData(data);
+    setIsDataEditorOpen(false);
+    setTimeout(() => setIsVisualBuilderOpen(true), 150);
   }, []);
+
+  const handleOpenVisualBuilder = useCallback(() => {
+    if (!resumeData) {
+      console.log('[handleOpenVisualBuilder] No resumeData at all — cannot open');
+      return;
+    }
+
+    let nextData: ResumeData = { ...resumeData };
+
+    if (tailorResult?.sections?.length) {
+      const sections = tailorResult.sections;
+      // Map tailored sections back into resumeData fields
+      for (const s of sections) {
+        const heading = s.section.toLowerCase();
+        if (heading.includes('summary') || heading.includes('profile') || heading.includes('objective')) {
+          if (s.tailored.trim()) nextData.summary = s.tailored.trim();
+        } else if (heading.includes('skill')) {
+          const extracted = s.tailored.split(/[,;\n]+/).map(t => t.trim()).filter(t => t.length > 0);
+          if (extracted.length > 0) nextData.skills = extracted;
+        } else if (heading.includes('experience') || heading.includes('work')) {
+          // Keep original experience items, but note they were tailored
+        } else if (heading.includes('education')) {
+          // Keep original education
+        }
+      }
+    } else if (tailorResult?.tailored) {
+      // Fallback: use full tailored text as summary
+      nextData.summary = tailorResult.tailored.slice(0, 800);
+    }
+
+    console.log('[handleOpenVisualBuilder] Before:', JSON.stringify(resumeData?.summary?.slice(0, 40)));
+    console.log('[handleOpenVisualBuilder] After:', JSON.stringify(nextData?.summary?.slice(0, 40)));
+
+    setResumeData(nextData);
+    // Force two render cycles — one for data, one for dialog
+    setTimeout(() => setIsVisualBuilderOpen(true), 300);
+  }, [tailorResult, resumeData]);
 
   const handleVisualBuilderExport = useCallback((data: ResumeData) => {
     setResumeData(data);
@@ -434,6 +486,30 @@ export default function ResumeStudioPage() {
 
           {tailorResult && (
             <>
+              {tailorResult.stats && (
+                <div className="grid gap-4 grid-cols-3">
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-2xl font-bold text-primary">{tailorResult.stats.bulletPointsRewritten}</p>
+                      <p className="text-xs text-muted-foreground">Bullet Points Rewritten</p>
+                      <p className="text-xs text-muted-foreground">of {tailorResult.stats.bulletPointsTotal} total</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-2xl font-bold text-green-600">{tailorResult.stats.keywordsAdded}</p>
+                      <p className="text-xs text-muted-foreground">JD Keywords Added</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-2xl font-bold text-orange-600">{tailorResult.stats.buzzwordsRemoved}</p>
+                      <p className="text-xs text-muted-foreground">Buzzwords Removed</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Resume Diff</CardTitle>
@@ -468,10 +544,7 @@ export default function ResumeStudioPage() {
                     guardrails={tailorResult.guardrails}
                     resumeData={resumeData ?? undefined}
                     onSuccess={handleExportSuccess}
-                    onOpenVisualBuilder={() => {
-                      console.log('onOpenVisualBuilder callback triggered');
-                      setIsVisualBuilderOpen(true);
-                    }}
+                    onOpenVisualBuilder={handleOpenVisualBuilder}
                   />
                 </CardContent>
               </Card>
@@ -505,6 +578,16 @@ export default function ResumeStudioPage() {
               Jump to Analysis
             </Button>
 
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleOpenVisualBuilder}
+            >
+              <Layout className="mr-2 h-4 w-4" />
+              Open Visual Builder
+            </Button>
+
             <p className="text-xs text-muted-foreground">
               The analysis shortcut unlocks after a resume has been uploaded. Tailoring
               and export unlock as you move through the workflow.
@@ -523,10 +606,7 @@ export default function ResumeStudioPage() {
                 resumeData={resumeData ?? undefined}
                 compact
                 onSuccess={handleExportSuccess}
-                onOpenVisualBuilder={() => {
-                  console.log('Compact onOpenVisualBuilder callback triggered');
-                  setIsVisualBuilderOpen(true);
-                }}
+                onOpenVisualBuilder={handleOpenVisualBuilder}
               />
             )}
 

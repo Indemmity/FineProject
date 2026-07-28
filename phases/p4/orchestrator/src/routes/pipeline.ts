@@ -4,12 +4,28 @@
 
 import { Router, Request, Response } from "express";
 import { createPipeline, getPipeline, transitionTo, listPipelines, PipelineState } from "../pipeline.js";
+import { runFullPipeline } from "../workflows/full-pipeline.js";
 
 export const pipelineRouter = Router();
 
 // POST /api/pipeline/start — create and start a new pipeline
-pipelineRouter.post("/start", (_req: Request, res: Response) => {
+pipelineRouter.post("/start", async (req: Request, res: Response) => {
   const pipeline = createPipeline();
+  const body = req.body as Record<string, unknown> | undefined;
+
+  // Accept keywords and other data from request
+  if (body?.keywords) {
+    pipeline.data.keywords = body.keywords as string[];
+  }
+  if (body?.resumeId) {
+    pipeline.data.resumeId = body.resumeId as string;
+  }
+
+  // Run the full workflow in background
+  runFullPipeline(pipeline).catch((err) => {
+    console.error(`[pipeline/${pipeline.pipelineId}] Workflow failed:`, err);
+  });
+
   res.status(201).json({ pipelineId: pipeline.pipelineId, state: pipeline.state });
 });
 

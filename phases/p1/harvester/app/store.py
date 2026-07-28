@@ -58,6 +58,7 @@ async def upsert_jobs(jobs: list[dict[str, Any]]) -> int:
                     "experience_level": stmt.excluded.experience_level,
                     "posted_date": stmt.excluded.posted_date,
                     "url": stmt.excluded.url,
+                    "search_keyword": stmt.excluded.search_keyword,
                     "scraped_at": stmt.excluded.scraped_at,
                     "raw": stmt.excluded.raw,
                 },

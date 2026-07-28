@@ -20,6 +20,8 @@ async def init_db(database_url: str) -> None:
     global engine, async_session
     engine = create_async_engine(database_url, echo=False, pool_size=5, max_overflow=10)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_db() -> None:

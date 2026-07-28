@@ -23,6 +23,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.pytest_cache/
 
 # PDF outputs
 *.pdf
@@ -30,3 +31,16 @@ venv/
 # Uploads
 uploads/*
 !uploads/.gitkeep
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+*.env
+!.env.example
+
+# Misc
+RESUMEMAKER.md
+.commandcode/

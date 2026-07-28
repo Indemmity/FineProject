@@ -18,6 +18,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 from ..config import settings
 from .base import JobSourceAdapter, SearchParams, RawJobListing
@@ -89,7 +91,8 @@ class NaukriAdapter(JobSourceAdapter):
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
 
-        return webdriver.Chrome(options=options)
+        service = Service(ChromeDriverManager().install())
+        return webdriver.Chrome(service=service, options=options)
 
     def _dismiss_cookie_consent(self, driver: webdriver.Chrome) -> None:
         """Try to dismiss cookie consent banners."""
@@ -111,21 +114,14 @@ class NaukriAdapter(JobSourceAdapter):
         except TimeoutException:
             return []
 
-        # First pass: extract basic data from cards
-        card_data = []
+        # Extract from cards directly — skip detail page visits (too slow)
         for card in job_cards:
             try:
-                card_data.append(self._extract_card_basic(card, keyword))
+                data = self._extract_card_basic(card, keyword)
+                if data:
+                    listings.append(self._create_listing(data, keyword))
             except Exception:
                 continue
-
-        # Second pass: get full descriptions from detail pages
-        for data in card_data:
-            if data and data['url']:
-                full_desc = self._get_full_description(data['url'])
-                if full_desc:
-                    data['description'] = full_desc
-                listings.append(self._create_listing(data, keyword))
 
         return listings
 

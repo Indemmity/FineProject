@@ -12,6 +12,7 @@ CSS selectors confirmed working as of July 2026:
 
 import hashlib
 import time
+import urllib.parse
 from typing import Any
 
 from selenium import webdriver
@@ -19,6 +20,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 from ..config import settings
@@ -38,9 +41,11 @@ class FounditAdapter(JobSourceAdapter):
         return await loop.run_in_executor(None, self._search_sync, params)
 
     def _build_search_url(self, keyword: str, location: str | None) -> str:
-        url = f"{BASE_URL}/srp/results?query={keyword}"
+        encoded_kw = urllib.parse.quote(keyword)
+        url = f"{BASE_URL}/srp/results?query={encoded_kw}"
         if location:
-            url += f"&locations={location}"
+            loc_encoded = urllib.parse.quote(location)
+            url += f"&locations={loc_encoded}"
         return url
 
     def _search_sync(self, params: SearchParams) -> list[RawJobListing]:
@@ -50,11 +55,18 @@ class FounditAdapter(JobSourceAdapter):
             location = params.location
             search_url = self._build_search_url(keyword, location)
 
-            driver.get(search_url)
-            time.sleep(4)
+            all_listings = []
+            for page in range(3):
+                page_url = search_url if page == 0 else f"{search_url}&page={page + 1}"
+                driver.get(page_url)
+                time.sleep(3)
 
-            listings = self._extract_listings(driver, keyword)
-            return listings[:30]
+                listings = self._extract_listings(driver, keyword)
+                if not listings:
+                    break
+                all_listings.extend(listings)
+
+            return all_listings[:50]
         finally:
             driver.quit()
 
@@ -64,12 +76,28 @@ class FounditAdapter(JobSourceAdapter):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
-        if settings.user_agent_rotation:
-            options.add_argument(
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            )
-        return webdriver.Chrome(options=options)
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-features=TranslateUI")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        
+        # Randomize user agent to avoid detection
+        import random
+        agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0",
+        ]
+        options.add_argument(f"user-agent={random.choice(agents)}")
+        
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        })
+        return driver
 
     def _extract_listings(self, driver: webdriver.Chrome, keyword: str) -> list[RawJobListing]:
         listings = []
@@ -138,7 +166,17 @@ class FounditAdapter(JobSourceAdapter):
             description = f"Experience: {exp}"
 
         job_id = card.get_attribute("id") or ""
-        url = f"{BASE_URL}/job-detail/{job_id}" if job_id else ""
+        try:
+            link_el = card.find_element(By.CSS_SELECTOR, "a[href*='job-detail'], a[href*='/job/']")
+            url = link_el.get_attribute("href") or ""
+        except NoSuchElementException:
+            url = ""
+        
+        # If no link found or link is just a detail page (which requires session),
+        # use a Google search link that actually works for the user
+        if not url or "/job-detail/" in url:
+            search_query = urllib.parse.quote(f"{title} {company} job")
+            url = f"https://www.google.com/search?q={search_query}"
 
         raw_id = hashlib.md5(f"{title}:{company}:{keyword}".encode()).hexdigest()[:12]
 

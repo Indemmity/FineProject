@@ -70,6 +70,7 @@ export async function POST(
       original: resume.text,
       tailored: sanitizedTailoredText,
       sections: sanitizedSections,
+      stats: tailored.stats,
       diff,
       guardrails,
       resumeId: id,
