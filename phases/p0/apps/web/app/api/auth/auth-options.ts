@@ -55,7 +55,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         // Allow dev-login in dev OR when explicitly enabled on Vercel previews
-        if (process.env.VERCEL_ENV === 'preview' || process.env.ALLOW_DEMO_LOGIN === 'true') {
+        if (process.env.VERCEL_ENV === 'preview' || process.env.ALLOW_DEMO_LOGIN === 'true' || process.env.NODE_ENV === 'development') {
           const email = (credentials?.email ?? '').toLowerCase().trim();
           if (!email) return null;
           return {
@@ -64,7 +64,7 @@ export const authOptions: NextAuthOptions = {
             name: email === DEMO_EMAIL ? 'Demo User' : email.split('@')[0] ?? 'Dev User',
           };
         }
-        if (process.env.NODE_ENV !== 'development') return null;
+        return null;
       },
     }),
     // ✦ Magic-link credentials provider (default)
