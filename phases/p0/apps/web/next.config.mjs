@@ -6,6 +6,12 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    turbo: {
+      rules: {
+        '*.ts': ['ts'],
+        '*.tsx': ['tsx'],
+      },
+    },
   },
   // pdfjs-dist contains a webpack bundle that dynamically imports ./pdf.worker.mjs.
   // Marking it external prevents Turbopack from resolving that import through its
@@ -19,6 +25,7 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
   },
+  transpilePackages: ['@jobplatform/shared'],
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
 
