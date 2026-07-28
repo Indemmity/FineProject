@@ -99,8 +99,8 @@ function LoginForm() {
             </button>
           </form>
 
-          {/* ── Demo User (development only) ── */}
-          {process.env.NODE_ENV === 'development' && (
+          {/* ── Demo User ── */}
+          {(process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ALLOW_DEMO_LOGIN === 'true') && (
             <>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
