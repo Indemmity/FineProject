@@ -27,6 +27,22 @@ export default function OutreachConsolePage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [draftToSend, setDraftToSend] = useState<OutreachLogResponse | null>(null);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [smtpStatus, setSmtpStatus] = useState<{ connected: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/debug/smtp')
+      .then(r => r.json())
+      .then(d => {
+        const connected = d.smtp?.user_configured && d.smtp?.pass_configured;
+        setSmtpStatus({
+          connected: !!connected,
+          message: connected
+            ? `SMTP: ${d.smtp?.user_value}@${d.smtp?.host}`
+            : `SMTP not configured (keys: ${d.env_count || 'none'})`,
+        });
+      })
+      .catch(() => setSmtpStatus({ connected: false, message: 'SMTP status check failed' }));
+  }, []);
 
   const loadOutreachData = useCallback(async () => {
     setIsRefreshing(true);
@@ -114,6 +130,15 @@ export default function OutreachConsolePage() {
           <p className="text-muted-foreground">
             Generate, preview, send, and track cold emails.
           </p>
+          {smtpStatus && (
+            <div className={`mt-2 text-xs px-2 py-1 rounded inline-block ${
+              smtpStatus.connected 
+                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+                : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+            }`}>
+              {smtpStatus.connected ? '🟢' : '🔴'} {smtpStatus.message}
+            </div>
+          )}
         </div>
         <Button variant="outline" onClick={() => void loadOutreachData()} disabled={isRefreshing}>
           <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
