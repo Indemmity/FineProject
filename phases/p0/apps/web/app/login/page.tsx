@@ -34,18 +34,23 @@ function LoginForm() {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    setSent(false);
 
     try {
-      const result = await signIn('magic-link', { email, redirect: false });
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
 
-      if (result?.error) {
-        setError('Failed to sign in. Please check your email.');
-      } else {
+      const data = await res.json();
+      if (data.status === 'sent') {
         setSent(true);
-        router.push(callbackUrl);
+      } else {
+        setError(data.error || 'Failed to send magic link. Check SMTP configuration.');
       }
     } catch {
-      setError('An unexpected error occurred. Please try again.');
+      setError('Failed to send magic link. Please try again.');
     } finally {
       setIsLoading(false);
     }
