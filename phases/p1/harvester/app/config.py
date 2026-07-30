@@ -1,9 +1,10 @@
+import os
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = "sqlite+aiosqlite:///./jobs.db"
+    database_url: str = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./jobs.db")
 
     # Scraping
     naukri_base_url: str = "https://www.naukri.com"

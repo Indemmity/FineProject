@@ -1,4 +1,4 @@
-# Harvester service for Render — includes Chrome for Selenium
+# Harvester service — Chrome + Python for job scraping
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -16,7 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY phases/p1/harvester/ .
 
 ENV PYTHONPATH=/app
-ENV DATABASE_URL=postgresql+asyncpg://neondb_owner:npg_6v7ELIUFBXqo@ep-flat-sun-azf9v5t9.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
 
 EXPOSE 8001
 
