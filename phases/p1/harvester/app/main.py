@@ -8,6 +8,7 @@ import structlog
 from .routes import jobs, export
 from .middleware.error_handler import register_error_handlers
 from .config import settings
+from .models import init_db, close_db
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
 logger = structlog.get_logger(__name__)
