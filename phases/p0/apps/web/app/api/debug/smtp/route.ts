@@ -14,35 +14,16 @@ export async function GET() {
       host: smtpHost,
       port: smtpPort,
       user_configured: !!smtpUser,
+      user_value: smtpUser ? smtpUser.substring(0, 3) + "..." : "NOT SET",
       pass_configured: !!smtpPass,
+      pass_length: smtpPass.length,
       sender_name: senderName || "NOT SET",
     },
-    vercel_env: !!process.env.VERCEL,
-    node_env: process.env.NODE_ENV || "unknown",
+    env_count: Object.keys(process.env).filter(k => k.startsWith('SMTP') || k.startsWith('SENDER')).join(', '),
+    all_env_keys: Object.keys(process.env).filter(k => /smtp|email|mail|sender/i.test(k)),
   };
 
-  // Try actual SMTP connection
-  if (smtpUser && smtpPass) {
-    try {
-      const nodemailer = await import("nodemailer");
-      const transporter = nodemailer.default.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: false,
-        auth: { user: smtpUser, pass: smtpPass },
-        connectionTimeout: 5000,
-      });
-      await transporter.verify();
-      (status as any).smtp_connected = true;
-      (status as any).smtp_message = "✅ SMTP connected successfully";
-    } catch (e: any) {
-      (status as any).smtp_connected = false;
-      (status as any).smtp_message = `❌ ${e.message || e}`;
-    }
-  } else {
-    (status as any).smtp_connected = false;
-    (status as any).smtp_message = "❌ SMTP credentials not configured — set SMTP_USER and SMTP_PASSWORD in Vercel env vars";
-  }
-
-  return NextResponse.json(status);
+  return NextResponse.json(status, {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  });
 }
