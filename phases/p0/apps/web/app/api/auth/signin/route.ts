@@ -53,17 +53,29 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get("token");
+  const { searchParams } = new URL(request.url);
+  const token = searchParams.get("token");
+  
+  console.log('[magic-link] GET hit, token:', token ? token.slice(0, 8) + '...' : 'MISSING');
+  console.log('[magic-link] Active tokens count:', tokens.size);
+  
   if (!token) {
     return NextResponse.redirect(new URL("/login?error=missing_token", request.url));
   }
 
   const email = tokens.get(token);
+  console.log('[magic-link] Email found for token:', email || 'NOT FOUND');
+  
   if (!email) {
-    return NextResponse.redirect(new URL("/login?error=expired", request.url));
+    return NextResponse.redirect(new URL("/login?error=expired_or_used", request.url));
   }
 
   tokens.delete(token);
-  return NextResponse.redirect(new URL(`/login?magic_token=${token}&email=${encodeURIComponent(email)}`, request.url));
+  const url = new URL("/login", request.url);
+  url.searchParams.set("email", email);
+  url.searchParams.set("magic_token", token);
+  console.log('[magic-link] Redirecting to:', url.toString());
+  
+  return NextResponse.redirect(url);
 }
 
