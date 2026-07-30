@@ -13,6 +13,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [smtpStatus, setSmtpStatus] = useState<{ connected: boolean; message: string } | null>(null);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     fetch('/api/debug/smtp')
