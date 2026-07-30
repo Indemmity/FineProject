@@ -8,10 +8,12 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # If DATABASE_URL is set but missing +asyncpg, add it for async support
         env_url = os.environ.get("DATABASE_URL", "")
         if env_url and env_url.startswith("postgresql://"):
-            self.database_url = env_url.replace("postgresql://", "postgresql+asyncpg://")
+            url = env_url.replace("postgresql://", "postgresql+asyncpg://")
+            # asyncpg doesn't support sslmode, use ssl=true instead
+            url = url.replace("sslmode=require", "ssl=true")
+            self.database_url = url
         elif env_url:
             self.database_url = env_url
 
