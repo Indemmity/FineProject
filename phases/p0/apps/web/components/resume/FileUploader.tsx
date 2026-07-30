@@ -90,11 +90,19 @@ export const FileUploader = forwardRef<FileUploaderHandle, FileUploaderProps>(
         const result = await new Promise<UploadResult>((resolve, reject) => {
           xhr.onload = () => {
             try {
-              const data = JSON.parse(xhr.responseText);
               if (xhr.status >= 200 && xhr.status < 300) {
+                const data = JSON.parse(xhr.responseText);
                 resolve(data);
               } else {
-                reject(new Error(data.error ?? "Upload failed"));
+                const body = xhr.responseText?.substring(0, 300);
+                let msg: string;
+                try {
+                  const data = JSON.parse(xhr.responseText);
+                  msg = data.error ?? "Upload failed";
+                } catch {
+                  msg = `Server returned status ${xhr.status}: ${body}`;
+                }
+                reject(new Error(msg));
               }
             } catch {
               reject(new Error("Upload failed: server returned an invalid response"));
