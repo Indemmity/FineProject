@@ -8,6 +8,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const magicEmail = searchParams.get('email');
+  const magicToken = searchParams.get('magic_token');
+
+  useEffect(() => {
+    if (magicEmail && magicToken) {
+      signIn('magic-link', { email: magicEmail, redirect: false })
+        .then(res => {
+          if (!res?.error) router.push('/dashboard');
+          else console.log('Magic link sign-in failed:', res.error);
+        });
+    }
+  }, [magicEmail, magicToken, router]);
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
