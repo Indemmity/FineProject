@@ -1,25 +1,38 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+function decodeEmailFromToken(token: string): string | null {
+  try {
+    const parts = token.split('.');
+    if (!parts[0]) return null;
+    const base64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+    return atob(base64);
+  } catch {
+    return null;
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const magicEmail = searchParams.get('email');
   const magicToken = searchParams.get('magic_token');
+  const magicEmail = searchParams.get('email') ?? (magicToken ? decodeEmailFromToken(magicToken) : null);
+
+  const autoSignIn = useCallback(async (email: string) => {
+    const res = await signIn('magic-link', { email, redirect: false });
+    if (!res?.error) router.push('/dashboard');
+    else console.log('Magic link sign-in failed:', res.error);
+  }, [router]);
 
   useEffect(() => {
     if (magicEmail && magicToken) {
-      signIn('magic-link', { email: magicEmail, redirect: false })
-        .then(res => {
-          if (!res?.error) router.push('/dashboard');
-          else console.log('Magic link sign-in failed:', res.error);
-        });
+      autoSignIn(magicEmail);
     }
-  }, [magicEmail, magicToken, router]);
+  }, [magicEmail, magicToken, autoSignIn]);
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
