@@ -12,7 +12,22 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [smtpStatus, setSmtpStatus] = useState<{ connected: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/debug/smtp')
+      .then(r => r.json())
+      .then(d => {
+        const connected = d.smtp?.user_configured && d.smtp?.pass_configured;
+        setSmtpStatus({
+          connected: !!connected,
+          message: connected
+            ? `🟢 Mail ready: ${d.smtp?.user_value}`
+            : '🔴 Magic link unavailable — SMTP not configured. Use demo login instead.',
+        });
+      })
+      .catch(() => setSmtpStatus({ connected: false, message: '🔴 SMTP status unknown' }));
+  }, []);
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +77,15 @@ function LoginForm() {
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-bold">Welcome</h1>
         <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
+        {smtpStatus && (
+          <div className={`text-xs px-2 py-1 rounded inline-block ${
+            smtpStatus.connected 
+              ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+              : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+          }`}>
+            {smtpStatus.message}
+          </div>
+        )}
       </div>
 
       {error && (
