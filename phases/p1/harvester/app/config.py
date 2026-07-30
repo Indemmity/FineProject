@@ -4,7 +4,16 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./jobs.db")
+    database_url: str = "sqlite+aiosqlite:///./jobs.db"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # If DATABASE_URL is set but missing +asyncpg, add it for async support
+        env_url = os.environ.get("DATABASE_URL", "")
+        if env_url and env_url.startswith("postgresql://"):
+            self.database_url = env_url.replace("postgresql://", "postgresql+asyncpg://")
+        elif env_url:
+            self.database_url = env_url
 
     # Scraping
     naukri_base_url: str = "https://www.naukri.com"
