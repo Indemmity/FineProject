@@ -4,7 +4,7 @@ uvicorn[standard]>=0.34.0
 
 # Validation & config
 pydantic>=2.10.0
-pydantic-settings>=2.6.0
+pydantic-settings>=2.14.2
 
 # Database
 sqlalchemy[asyncio]>=2.0.0
