@@ -4,10 +4,6 @@ import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Generate a signed token: email_base64.token_hash
- * The hash = sha256(email + secret) so we can verify email without storage
- */
 function createMagicToken(email: string): string {
   const secret = process.env.NEXTAUTH_SECRET || "dev-secret";
   const emailBase64 = Buffer.from(email.toLowerCase()).toString("base64url");
@@ -32,14 +28,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const email = body.email as string;
-    
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
-    }
+    if (!email) return NextResponse.json({ error: "Email is required" }, { status: 400 });
 
     const token = createMagicToken(email);
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const signInUrl = `${baseUrl}/api/auth/magic-link?token=${token}`;
+    const signInUrl = `${baseUrl}/login?magic_token=${token}`;
 
     console.log('[signin] Sending magic link to:', email);
 
@@ -60,11 +53,11 @@ export async function POST(request: NextRequest) {
       bodyText: `Sign in to Job Application Platform\n\nUse this link: ${signInUrl}\n\nIf you didn't request this, ignore this email.`,
     });
 
-    if (result.success) {
-      return NextResponse.json({ status: "sent", messageId: result.messageId });
-    } else {
-      return NextResponse.json({ status: "failed", error: result.error }, { status: 200 });
-    }
+    return NextResponse.json({
+      status: result.success ? "sent" : "failed",
+      messageId: result.messageId,
+      error: result.error,
+    });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
@@ -73,22 +66,10 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token");
-  
-  console.log('[magic-link] Token:', token ? token.slice(0, 20) + '...' : 'MISSING');
-  
-  if (!token) {
-    return NextResponse.redirect(new URL("/login?error=missing_token", request.url));
-  }
+  if (!token) return NextResponse.json({ error: "No token" }, { status: 400 });
 
   const email = verifyMagicToken(token);
-  console.log('[magic-link] Verified email:', email || 'INVALID');
-  
-  if (!email) {
-    return NextResponse.redirect(new URL("/login?error=invalid_token", request.url));
-  }
+  if (!email) return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
 
-  const url = new URL("/login", request.url);
-  url.searchParams.set("email", email);
-  url.searchParams.set("magic_token", token);
-  return NextResponse.redirect(url);
+  return NextResponse.json({ email });
 }
