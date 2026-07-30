@@ -1,5 +1,4 @@
 {
-  "buildCommand": "npm run next-build",
-  "outputDirectory": "phases/p0/apps/web/.next",
+  "buildCommand": "npm run build",
   "installCommand": "npm install"
 }
