@@ -4,7 +4,29 @@ import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
-const tokens = new Map<string, string>();
+/**
+ * Generate a signed token: email_base64.token_hash
+ * The hash = sha256(email + secret) so we can verify email without storage
+ */
+function createMagicToken(email: string): string {
+  const secret = process.env.NEXTAUTH_SECRET || "dev-secret";
+  const emailBase64 = Buffer.from(email.toLowerCase()).toString("base64url");
+  const hash = crypto.createHmac("sha256", secret).update(email.toLowerCase()).digest("hex").slice(0, 16);
+  return `${emailBase64}.${hash}`;
+}
+
+function verifyMagicToken(token: string): string | null {
+  try {
+    const [emailBase64, hash] = token.split(".");
+    if (!emailBase64 || !hash) return null;
+    const email = Buffer.from(emailBase64, "base64url").toString("utf-8");
+    const secret = process.env.NEXTAUTH_SECRET || "dev-secret";
+    const expectedHash = crypto.createHmac("sha256", secret).update(email.toLowerCase()).digest("hex").slice(0, 16);
+    return hash === expectedHash ? email : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,15 +37,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const token = crypto.randomBytes(32).toString("hex");
-    tokens.set(token, email.toLowerCase());
-    // Expire after 15 minutes
-    setTimeout(() => tokens.delete(token), 15 * 60 * 1000);
-
+    const token = createMagicToken(email);
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const signInUrl = `${baseUrl}/api/auth/magic-link?token=${token}`;
 
-    console.log('[signin] Sending magic link to:', email, 'token:', token.slice(0, 8) + '...');
+    console.log('[signin] Sending magic link to:', email);
 
     const result = await sendEmail({
       toEmail: email,
@@ -56,26 +74,21 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token");
   
-  console.log('[magic-link] GET hit, token:', token ? token.slice(0, 8) + '...' : 'MISSING');
-  console.log('[magic-link] Active tokens count:', tokens.size);
+  console.log('[magic-link] Token:', token ? token.slice(0, 20) + '...' : 'MISSING');
   
   if (!token) {
     return NextResponse.redirect(new URL("/login?error=missing_token", request.url));
   }
 
-  const email = tokens.get(token);
-  console.log('[magic-link] Email found for token:', email || 'NOT FOUND');
+  const email = verifyMagicToken(token);
+  console.log('[magic-link] Verified email:', email || 'INVALID');
   
   if (!email) {
-    return NextResponse.redirect(new URL("/login?error=expired_or_used", request.url));
+    return NextResponse.redirect(new URL("/login?error=invalid_token", request.url));
   }
 
-  tokens.delete(token);
   const url = new URL("/login", request.url);
   url.searchParams.set("email", email);
   url.searchParams.set("magic_token", token);
-  console.log('[magic-link] Redirecting to:', url.toString());
-  
   return NextResponse.redirect(url);
 }
-
