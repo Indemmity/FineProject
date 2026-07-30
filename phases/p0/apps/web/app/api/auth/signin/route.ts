@@ -14,6 +14,12 @@ export async function POST(request: NextRequest) {
 
     const signInUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/callback/magic-link?email=${encodeURIComponent(email)}`;
 
+    console.log('[signin] SMTP_USER:', process.env.SMTP_USER || 'NOT SET');
+    console.log('[signin] SMTP_PASS length:', (process.env.SMTP_PASSWORD || '').length);
+    console.log('[signin] SMTP_HOST:', process.env.SMTP_HOST || 'NOT SET');
+    console.log('[signin] SMTP_PORT:', process.env.SMTP_PORT || 'NOT SET');
+    console.log('[signin] Sending magic link to:', email);
+
     const result = await sendEmail({
       toEmail: email,
       toName: email.split("@")[0] || "User",
@@ -31,10 +37,12 @@ export async function POST(request: NextRequest) {
       bodyText: `Sign in to Job Application Platform\n\nUse this link: ${signInUrl}\n\nIf you didn't request this, ignore this email.`,
     });
 
+    console.log('[signin] Send result — success:', result.success, 'error:', result.error || 'none');
+
     if (result.success) {
       return NextResponse.json({ status: "sent", messageId: result.messageId });
     } else {
-      return NextResponse.json({ status: "failed", error: result.error }, { status: 500 });
+      return NextResponse.json({ status: "failed", error: result.error }, { status: 200 });
     }
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
