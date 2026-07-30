@@ -21,7 +21,7 @@ webdriver-manager>=4.0.0
 
 # Fuzzy matching (dedup)
 thefuzz>=0.22.1
-python-Levenshtein>=0.26.0
+python-Levenshtein>=0.27.3
 
 # Env
 python-dotenv>=1.0.0
