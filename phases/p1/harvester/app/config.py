@@ -11,8 +11,8 @@ class Settings(BaseSettings):
         env_url = os.environ.get("DATABASE_URL", "")
         if env_url and env_url.startswith("postgresql://"):
             url = env_url.replace("postgresql://", "postgresql+asyncpg://")
-            # asyncpg doesn't support sslmode, use ssl=true instead
-            url = url.replace("sslmode=require", "ssl=true")
+            # Strip sslmode — asyncpg handles SSL natively
+            url = url.replace("?sslmode=require", "").replace("&sslmode=require", "")
             self.database_url = url
         elif env_url:
             self.database_url = env_url
